@@ -10,12 +10,12 @@ import {
     Connection,
     Node,
     Edge,
-    useReactFlow,
+
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 
-import { initialNodes, initialEdges, parentNode, parentNodesSibling, parentNodesParent, parentNode2NoParent } from './initialElements';
+import { initialNodes, initialEdges, parentNode, parentNodesSibling, parentNodesParent } from './initialElements';
 import { LayoutElementsWithDagre } from './LayoutElementsWithDagre';
 import { createChildNodesToNode, fixNodeDimensions } from './utils';
 
@@ -103,7 +103,6 @@ export const DagreFlow = () => {
     useEffect(() => {
         const updatedNodes = createChildNodesToNode(nodes, parentNode)
         setNodes([parentNodesParent, parentNodesSibling, parentNode, ...updatedNodes] as any[]);
-        // setNodes([parentNode2NoParent, ...updatedNodes] as any[]);
         setChildNodesInitialized(true);
     }, []);
 
