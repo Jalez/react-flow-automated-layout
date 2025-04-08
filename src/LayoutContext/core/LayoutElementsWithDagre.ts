@@ -1,31 +1,37 @@
-import { Edge, Position, Node } from "@xyflow/react";
+import { Edge, Node } from "@xyflow/react";
 
 import dagre from '@dagrejs/dagre';
+import { Direction } from "./HierarchicalLayoutOrganizer";
+import { convertDirectionToLayout, getSourcePosition, getTargetPosition } from "../utils/layoutProviderUtils";
 
 const nodeWidth = 172;
 const nodeHeight = 36;
 
-interface LayoutResult {
+export interface LayoutResult {
   nodes: Node[];
   edges: Edge[];
   width: number;
   height: number;
 }
 
-export const LayoutElementsWithDagre = (
+export const calculateLayoutWithDagre = (
   nodes: Node[],
   edges: Edge[],
-  direction: 'TB' | 'LR' = 'TB',
+  direction: Direction,
   margin = 0,
+  nodeSpacing: number = 50,
+  layerSpacing: number = 50
 ): LayoutResult => {
   const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  const isHorizontal = direction === 'LR';
 
   dagreGraph.setGraph({
     rankdir: direction,
     marginx: margin,
     marginy: margin,
-    nodesep: 50,
+    nodesep: nodeSpacing,        // Horizontal spacing between nodes within the same layer
+    ranksep: layerSpacing,       // Vertical spacing between layers
+    edgesep: Math.max(20, nodeSpacing / 4),  // Spacing between edges
+    ranker: 'network-simplex'    // Use network simplex algorithm for better results
   });
 
   nodes.forEach((node: Node) => {
@@ -44,14 +50,17 @@ export const LayoutElementsWithDagre = (
   const graphWidth = dagreGraph.graph().width || 0;
   const graphHeight = dagreGraph.graph().height || 0;
 
+  const sourcePosition = getSourcePosition(convertDirectionToLayout(direction));
+  const targetPosition = getTargetPosition(convertDirectionToLayout(direction));
+
   const newNodes = nodes.map((node: Node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
     // Get dimensions used by Dagre for this node
     const { width: dagreWidth, height: dagreHeight } = nodeWithPosition;
     const newNode = {
       ...node,
-      targetPosition: isHorizontal ? Position.Left : Position.Top,
-      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+      targetPosition: targetPosition,
+      sourcePosition: sourcePosition,
       // Calculate top-left corner from Dagre's center position and dimensions
       position: {
         x: nodeWithPosition.x - dagreWidth / 2,
@@ -69,3 +78,5 @@ export const LayoutElementsWithDagre = (
     height: graphHeight,
   };
 };
+
+

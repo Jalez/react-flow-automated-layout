@@ -1,33 +1,72 @@
 {
   "name": "@jalez/react-flow-automated-layout",
-  "private": true,
-  "version": "0.0.1",
+  "version": "0.1.1",
   "type": "module",
+  "license": "MIT",
+  "description": "A React library for automated layout of nested node graphs with parent-child relationships using React Flow",
+  "author": "Jaakko Rajala",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jalez/react-flow-automated-layout"
+  },
+  "keywords": [
+    "typescript",
+    "react",
+    "react-flow",
+    "dagre",
+    "graph",
+    "layout",
+    "automated-layout",
+    "parent-child"
+  ],
+  "main": "dist/react-flow-automated-layout.umd.js",
+  "module": "dist/react-flow-automated-layout.es.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/react-flow-automated-layout.es.js",
+      "require": "./dist/react-flow-automated-layout.umd.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite --open",
     "build": "tsc -b && vite build",
+    "build-lib": "tsc -b tsconfig.lib.json && vite build",
+    "generate-types": "tsc -p tsconfig.lib.json --emitDeclarationOnly",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build-lib && npm run generate-types"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.4",
-    "@xyflow/react": "^12.4.4",
-    "elkjs": "^0.10.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zustand": "^5.0.3"
+    "@dagrejs/dagre": "^1.1.4"
+  },
+  "peerDependencies": {
+    "@xyflow/react": "^12.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@mui/material": "^7.0.1",
+    "@types/node": "^22.14.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react-swc": "^3.8.0",
+    "@xyflow/react": "^12.4.4",
+    "dotenv": "^16.4.7",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-dts": "^4.5.3"
   }
 }

@@ -16,13 +16,6 @@ parentId: '0parent',
 extent: 'parent' as const,
 };
 
-export const parentNode2NoParent = {
-id: '0',
-  type: 'group',
-  data: {},
-  position,
-}
-
 export const parentNodesSibling = {
 id: '0sibling',
   type: 'group',
