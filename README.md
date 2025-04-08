@@ -2,6 +2,9 @@
 
 A React library for automated layout of nested node graphs with parent-child relationships using React Flow. The library provides an easy-to-use context provider system that handles intelligent layouts for flowcharts and diagrams.
 
+## Examples in codesandbox.io
+[Link](https://codesandbox.io/p/sandbox/wyp9px)
+
 ## Key Features
 
 - **Automated Layout**: Implements Dagre algorithm for automated graph layouts
