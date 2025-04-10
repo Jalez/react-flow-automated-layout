@@ -23,6 +23,10 @@ interface LayoutProviderProps {
         node?: number;
         layer?: number;
     };
+    initialNodeDimensions?: {
+        width?: number;
+        height?: number;
+    };
     initialParentResizingOptions?: Partial<ParentResizingOptions>;
     layoutEngines?: Record<string, LayoutEngine>;
     updateNodes?: (nodes: Node[]) => void;
@@ -42,6 +46,7 @@ export function LayoutProvider({
     initialAutoLayout = true,
     initialPadding = 50,
     initialSpacing = { node: 150, layer: 180 },
+    initialNodeDimensions = { width: 172, height: 36 },
     initialParentResizingOptions,
     layoutEngines: customEngines,
     updateNodes,
@@ -61,6 +66,8 @@ export function LayoutProvider({
     const [padding, setPadding] = useState<number>(initialPadding);
     const [nodeSpacing, setNodeSpacing] = useState<number>(initialSpacing.node || 150);
     const [layerSpacing, setLayerSpacing] = useState<number>(initialSpacing.layer || 180);
+    const [nodeWidth, setNodeWidth] = useState<number>(initialNodeDimensions.width || 100);
+    const [nodeHeight, setNodeHeight] = useState<number>(initialNodeDimensions.height || 100);
 
     // Refs to prevent infinite loops
     const applyingLayoutRef = useRef(false);
@@ -110,7 +117,9 @@ export function LayoutProvider({
         parentIdWithNodes,
         nodeIdWithNode,
         nodeSpacing,
-        layerSpacing
+        layerSpacing,
+        nodeWidth,
+        nodeHeight
     );
 
     // Register a new layout engine
@@ -253,6 +262,8 @@ export function LayoutProvider({
         padding,
         nodeSpacing,
         layerSpacing,
+        nodeWidth,
+        nodeHeight,
         parentResizingOptions,
         layoutEngines,
         layoutEngineOptions,
@@ -267,8 +278,10 @@ export function LayoutProvider({
         setAutoLayout,
         setLayoutInProgress,
         setPadding,
-        setNodeSpacing,  // Use the safe version
-        setLayerSpacing, // Use the safe version
+        setNodeSpacing,
+        setLayerSpacing,
+        setNodeWidth,
+        setNodeHeight,
         setParentResizingOptions,
         setLayoutEngineOptions,
 

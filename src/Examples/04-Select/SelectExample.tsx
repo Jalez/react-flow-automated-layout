@@ -173,9 +173,8 @@ function SelectionDisplay() {
     });
 
     return (
-        <div>
-            <p>Selected nodes: {selectedNodes.map((node: Node) => node.id).join(', ')}</p>
-        </div>
+            <p>Ids of selected nodes: {selectedNodes.map((node: Node) => node.id).join(', ')}</p>
+        
     );
 }
 

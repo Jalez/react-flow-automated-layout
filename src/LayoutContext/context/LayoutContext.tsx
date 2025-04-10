@@ -36,6 +36,8 @@ export interface LayoutContextState {
   padding: number;
   nodeSpacing: number;
   layerSpacing: number;
+  nodeWidth: number;
+  nodeHeight: number;
   
   // Parent resizing options
   parentResizingOptions: ParentResizingOptions;
@@ -60,6 +62,8 @@ export interface LayoutContextState {
   setPadding: (padding: number) => void;
   setNodeSpacing: (spacing: number) => void;
   setLayerSpacing: (spacing: number) => void;
+  setNodeWidth: (width: number) => void;
+  setNodeHeight: (height: number) => void;
   setParentResizingOptions: (options: Partial<ParentResizingOptions>) => void;
   setLayoutEngineOptions: (options: Record<string, any>) => void;
   

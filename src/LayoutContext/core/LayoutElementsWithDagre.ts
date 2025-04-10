@@ -4,8 +4,9 @@ import dagre from '@dagrejs/dagre';
 import { Direction } from "./HierarchicalLayoutOrganizer";
 import { convertDirectionToLayout, getSourcePosition, getTargetPosition } from "../utils/layoutProviderUtils";
 
-const nodeWidth = 172;
-const nodeHeight = 36;
+// Default values moved to variable references, will be overridden by parameters
+const DEFAULT_NODE_WIDTH = 172;
+const DEFAULT_NODE_HEIGHT = 36;
 
 export interface LayoutResult {
   nodes: Node[];
@@ -20,7 +21,9 @@ export const calculateLayoutWithDagre = (
   direction: Direction,
   margin = 0,
   nodeSpacing: number = 50,
-  layerSpacing: number = 50
+  layerSpacing: number = 50,
+  defaultNodeWidth: number = DEFAULT_NODE_WIDTH,
+  defaultNodeHeight: number = DEFAULT_NODE_HEIGHT
 ): LayoutResult => {
   const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
@@ -35,9 +38,9 @@ export const calculateLayoutWithDagre = (
   });
 
   nodes.forEach((node: Node) => {
-    // Use actual node dimensions from style or fall back to defaults
-    const width = Number(node.style?.width) || nodeWidth;
-    const height = Number(node.style?.height) || nodeHeight;
+    // Use actual node dimensions from style or fall back to configurable defaults
+    const width = Number(node.style?.width) || defaultNodeWidth;
+    const height = Number(node.style?.height) || defaultNodeHeight;
     dagreGraph.setNode(node.id, { width, height });
   });
 

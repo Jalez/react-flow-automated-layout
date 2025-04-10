@@ -61,6 +61,8 @@ const filterSelectedParentNodes = (
  * @param margin Margin to use for layout
  * @param nodeSpacing Spacing between nodes
  * @param layerSpacing Spacing between layers
+ * @param nodeWidth Width of nodes
+ * @param nodeHeight Height of nodes
  * @returns Object containing updated nodes and edges
  */
 const processSelectedNodes = (
@@ -72,7 +74,9 @@ const processSelectedNodes = (
   edges: Edge[],
   margin: number,
   nodeSpacing: number,
-  layerSpacing: number
+  layerSpacing: number,
+  nodeWidth: number,
+  nodeHeight: number
 ): { nodes: Node[], edges: Edge[] } => {
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
@@ -99,7 +103,9 @@ const processSelectedNodes = (
       edges,
       margin,
       nodeSpacing,
-      layerSpacing
+      layerSpacing,
+      nodeWidth,
+      nodeHeight
     );
     
     // Add updated nodes to map (this automatically handles duplicates)
@@ -138,7 +144,9 @@ export const useLayoutCalculation = (
   parentIdWithNodes: Map<string, Node[]>,
   nodeIdWithNode: Map<string, Node>,
   nodeSpacing: number,
-  layerSpacing: number
+  layerSpacing: number,
+  nodeWidth: number = 172,
+  nodeHeight: number = 36
 ) => {
   
   /**
@@ -174,7 +182,9 @@ export const useLayoutCalculation = (
         edges,
         margin,
         nodeSpacing,
-        layerSpacing
+        layerSpacing,
+        nodeWidth,
+        nodeHeight
       );
     } else {
       // Use our helper function to process the entire tree in depth order
@@ -187,7 +197,9 @@ export const useLayoutCalculation = (
         edges,
         margin,
         nodeSpacing,
-        layerSpacing
+        layerSpacing,
+        nodeWidth,
+        nodeHeight
       );
 
       return {
@@ -203,7 +215,9 @@ export const useLayoutCalculation = (
     parentIdWithNodes,
     nodeIdWithNode,
     nodeSpacing,
-    layerSpacing
+    layerSpacing,
+    nodeWidth,
+    nodeHeight
   ]);
 
   return { calculateLayout };

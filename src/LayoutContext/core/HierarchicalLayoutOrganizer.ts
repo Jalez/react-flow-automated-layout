@@ -27,6 +27,8 @@ const MARGIN = 10;
  * @param margin - The margin to use for the layout
  * @param nodeSpacing - Spacing between nodes (horizontal within same rank)
  * @param layerSpacing - Spacing between layers (vertical between ranks)
+ * @param defaultNodeWidth - Default width for nodes without explicit width
+ * @param defaultNodeHeight - Default height for nodes without explicit height
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const organizeLayoutRecursively = (
@@ -38,6 +40,8 @@ export const organizeLayoutRecursively = (
     margin: number = MARGIN,
     nodeSpacing: number = 50,
     layerSpacing: number = 50,
+    defaultNodeWidth: number = 172,
+    defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     
@@ -51,6 +55,8 @@ export const organizeLayoutRecursively = (
         margin,
         nodeSpacing,
         layerSpacing,
+        defaultNodeWidth,
+        defaultNodeHeight,
         LayoutAlgorithm
     );
 
@@ -68,6 +74,8 @@ export const organizeLayoutRecursively = (
         margin,
         nodeSpacing,
         layerSpacing,
+        defaultNodeWidth,
+        defaultNodeHeight,
         LayoutAlgorithm
     );
 
@@ -90,6 +98,11 @@ export const organizeLayoutRecursively = (
  * @param nodeIdWithNode - A map of node ids to their nodes
  * @param edges - The edges to layout
  * @param margin - The margin to use for the layout
+ * @param nodeSpacing - Spacing between nodes
+ * @param layerSpacing - Spacing between layers
+ * @param defaultNodeWidth - Default width for nodes without explicit width
+ * @param defaultNodeHeight - Default height for nodes without explicit height
+ * @param LayoutAlgorithm - The layout algorithm to use
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const layoutSingleContainer = (
@@ -101,6 +114,8 @@ export const layoutSingleContainer = (
     margin: number = MARGIN,
     nodeSpacing: number = 50,
     layerSpacing: number = 50,
+    defaultNodeWidth: number = 172,
+    defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     const nodesToLayout = parentIdWithNodes.get(parentNodeId);
@@ -109,7 +124,16 @@ export const layoutSingleContainer = (
     }
     const edgesToLayout = getEdgesOfNodes(nodesToLayout, edges);
     const { nodes: layoutedNodes, edges: layoutedEdges, width, height } =
-    LayoutAlgorithm(nodesToLayout, edgesToLayout, direction, margin, nodeSpacing, layerSpacing);
+    LayoutAlgorithm(
+        nodesToLayout, 
+        edgesToLayout, 
+        direction, 
+        margin, 
+        nodeSpacing, 
+        layerSpacing,
+        defaultNodeWidth,
+        defaultNodeHeight
+    );
     const parentNode = nodeIdWithNode.get(parentNodeId);
     if(parentNode) {
         fixParentNodeDimensions(parentNode, width, height);
@@ -150,6 +174,8 @@ export const fixParentNodeDimensions = (
  * @param margin - The margin to use for the layout
  * @param nodeSpacing - Spacing between nodes (horizontal within same rank)
  * @param layerSpacing - Spacing between layers (vertical between ranks)
+ * @param defaultNodeWidth - Default width for nodes without explicit width
+ * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
@@ -162,6 +188,8 @@ export const organizeLayoutByTreeDepth = (
     margin: number = MARGIN,
     nodeSpacing: number = 50,
     layerSpacing: number = 50,
+    defaultNodeWidth: number = 172,
+    defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     // Array to store all updated nodes and edges
@@ -205,6 +233,8 @@ export const organizeLayoutByTreeDepth = (
                 margin,
                 nodeSpacing,
                 layerSpacing,
+                defaultNodeWidth,
+                defaultNodeHeight,
                 LayoutAlgorithm
             );
             
@@ -224,6 +254,8 @@ export const organizeLayoutByTreeDepth = (
         margin,
         nodeSpacing,
         layerSpacing,
+        defaultNodeWidth,
+        defaultNodeHeight,
         LayoutAlgorithm
     );
     

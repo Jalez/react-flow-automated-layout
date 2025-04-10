@@ -15,6 +15,7 @@ A React library for automated layout of nested node graphs with parent-child rel
 - **Selective Layout**: Apply layout to only selected nodes or the entire graph
 - **Custom Controls**: Create your own control interfaces using the layout context
 - **Auto-reconnection**: Smart edge reconnection when nodes are removed
+- **Configurable Node Dimensions**: Set default dimensions for nodes that don't have explicit width/height
 - **Extensible Engine System**: Designed to support custom layout engines in future releases
 
 ## Installation
@@ -163,6 +164,94 @@ const childNodes = [
 const initialNodes = [parentNode, ...childNodes];
 ```
 
+## Node Dimensions
+
+The layout system uses default node dimensions for calculating optimal positioning when nodes don't have explicit width and height values. This is an important feature to understand:
+
+### Default Node Dimensions and Style Priority
+
+When the layout algorithm organizes your nodes, it needs to know how much space each node requires. The library handles this in the following priority order:
+
+1. If a node has explicit dimensions in its `style` property (`style.width` and `style.height`), these values are respected and used for layout calculations
+2. If no `style` dimensions are present, the library applies the default dimensions
+
+```javascript
+// Default dimensions used internally if not specified on the node's style
+const DEFAULT_NODE_WIDTH = 172;
+const DEFAULT_NODE_HEIGHT = 36;
+```
+
+**Important:** For the layout to work correctly, the system relies on the width and height properties of your nodes. The layout engine will use these values when positioning nodes, so it's crucial that:
+
+1. Either set width and height explicitly in your node's style properties
+2. Or let the layout system apply the default dimensions 
+
+This prioritization ensures that your custom node sizes are always respected while still allowing the layout algorithm to make accurate spacing calculations for nodes without explicit dimensions.
+
+### Configuring Default Dimensions
+
+You can customize these defaults when initializing the LayoutProvider:
+
+```jsx
+<LayoutProvider
+  // Other props...
+  initialNodeDimensions={{
+    width: 200,   // Custom default width
+    height: 50    // Custom default height
+  }}
+>
+  {/* Your React Flow component */}
+</LayoutProvider>
+```
+
+### Runtime Adjustment
+
+You can adjust node dimensions at runtime using the layout context:
+
+```jsx
+const { setNodeWidth, setNodeHeight } = useLayoutContext();
+
+// Update dimensions
+setNodeWidth(180);
+setNodeHeight(40);
+```
+
+### Important: Dimensions in Result Nodes
+
+**When the layout algorithm returns updated nodes, it includes these default dimensions in the nodes' properties.** This means:
+
+1. Nodes without dimensions will have `width` and `height` properties added
+2. These properties will be reflected in the rendered nodes
+3. The layout calculations will be consistent with the visual representation
+
+This is critical to understand because you should use these dimensions when working with the nodes returned by the layout system, rather than assuming nodes have their original dimensions.
+
+Example of a node after layout:
+
+```javascript
+// Original node (no dimensions)
+const originalNode = {
+  id: 'node1',
+  data: { label: 'Node 1' },
+  position: { x: 0, y: 0 }
+};
+
+// Node after layout (with dimensions added)
+const afterLayoutNode = {
+  id: 'node1',
+  data: { label: 'Node 1' },
+  position: { x: 100, y: 200 },
+  width: 172,       // Added by the layout system
+  height: 36,       // Added by the layout system
+  style: {
+    width: 172,     // Also added to style
+    height: 36      // Also added to style
+  }
+};
+```
+
+This ensures that node dimensions are consistent across the entire application, leading to more predictable layouts.
+
 ## Making Custom Controls
 
 You can create your own custom controls by using the `useLayoutContext` hook:
@@ -303,6 +392,7 @@ Shows how to build your own custom UI controls by accessing the layout context d
 | initialAutoLayout | boolean | false | Whether to automatically apply layout on changes |
 | initialPadding | number | 50 | Padding around the layout |
 | initialSpacing | { node: number, layer: number } | { node: 50, layer: 50 } | Spacing between nodes and layers |
+| initialNodeDimensions | { width: number, height: number } | { width: 172, height: 36 } | Default dimensions for nodes without explicit width/height |
 | initialParentResizingOptions | object | See below | Options for parent container resizing |
 | updateNodes | (nodes: Node[]) => void | | Callback to update nodes |
 | updateEdges | (edges: Edge[]) => void | | Callback to update edges |
