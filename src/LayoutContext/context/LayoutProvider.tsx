@@ -12,7 +12,6 @@ import { engines } from '../engines';
 import { DEFAULT_PARENT_RESIZING_OPTIONS, getSourcePosition, getTargetPosition } from '../utils/layoutProviderUtils';
 import { useLayoutCalculation } from '../hooks/useLayoutCalculation';
 
-
 interface LayoutProviderProps {
     children: ReactNode;
     initialDirection?: LayoutDirection;
@@ -72,7 +71,11 @@ export function LayoutProvider({
     // Refs to prevent infinite loops
     const applyingLayoutRef = useRef(false);
     const pendingSpacingUpdateRef = useRef<{ node?: number, layer?: number } | null>(null);
-
+    
+    // Ref to track structure changes independent of node position changes
+    
+    // Track if parent-child structure has changed
+    const [parentChildStructure, setParentChildStructureChanged] = useState<Record<string, number>>({});
 
     // State for parent resizing options
     const [parentResizingOptions, setParentResizingOptionsState] = useState<ParentResizingOptions>({
@@ -230,12 +233,9 @@ export function LayoutProvider({
         direction,
         updateNodes,
         updateEdges,
+
         reactFlowInstance,
     ]);
-
-
-
-
 
     // Effect to check when maps are populated and mark initialization complete
     useEffect(() => {
@@ -250,7 +250,33 @@ export function LayoutProvider({
             // Update handle positions based on new directions
             applyLayout();
         }
-    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing]);
+    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure]);
+
+    // Calculate parent-child structure signature
+    useEffect(() => {
+        // Generate a new structure signature based on parent IDs and their child counts
+        const newStructure: Record<string, number> = {};
+        parentIdWithNodes.forEach((nodes, parentId) => {
+            newStructure[parentId] = nodes.length;
+        });
+        
+        let hasChanged = false;
+        //Go through the new structure and check if it has changed
+        for (const key in newStructure) {
+            if(!parentChildStructure.hasOwnProperty(key)) {
+                hasChanged = true;
+                break;
+            }
+            if (newStructure[key] !== parentChildStructure[key]) {
+                hasChanged = true;
+                break;
+            }
+        }
+        // Update ref and state if changed
+        if (hasChanged) {
+            setParentChildStructureChanged(newStructure)
+        }
+    }, [parentIdWithNodes]);
 
     // Provide the context value
     const contextValue: LayoutContextState = {
