@@ -136,8 +136,12 @@ const ParentSwitchExample = () => {
         setNodes(updatedNodes as any[]); 
     }, [setNodes, nodes]);
 
+
+    if(nodes.length === 0) {
+        return <div style={{ width: '100%', height: '100%' }}></div>;
+    }
     return (
-        nodes.length > 0 && (
+   
             <LayoutProvider
                 initialDirection="DOWN"
                 initialAutoLayout={true}
@@ -177,7 +181,7 @@ const ParentSwitchExample = () => {
                     <Background />
                 </ReactFlow>
             </LayoutProvider>
-        )
+    
     );
 };
 
