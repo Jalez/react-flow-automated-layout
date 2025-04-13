@@ -7,7 +7,7 @@
   "author": "Jaakko Rajala",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jalez/react-flow-automated-layout"
+    "url": "git+https://github.com/jalez/react-flow-automated-layout.git"
   },
   "keywords": [
     "typescript",
