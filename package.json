@@ -51,7 +51,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
-    "@mui/material": "^7.0.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
