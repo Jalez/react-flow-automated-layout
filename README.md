@@ -13,10 +13,18 @@ A React library for automated layout of nested node graphs with parent-child rel
 - **Flexible Directions**: Support for both vertical (DOWN) and horizontal (RIGHT) layouts
 - **Interactive UI**: Real-time layout adjustments with control panel
 - **Selective Layout**: Apply layout to only selected nodes or the entire graph
+- **Parent Inclusion Fix**: Automatically includes a selected child’s parent node to ensure accurate automated layouts when only child nodes are selected
 - **Custom Controls**: Create your own control interfaces using the layout context
 - **Auto-reconnection**: Smart edge reconnection when nodes are removed
 - **Configurable Node Dimensions**: Set default dimensions for nodes that don't have explicit width/height
 - **Extensible Engine System**: Designed to support custom layout engines in future releases
+
+## Patch Updates
+
+### 0.3.1 (2025-04-18)
+
+- **Parent Inclusion Fix**: Automatically include a selected child’s parent node to ensure accurate automated layouts when only child nodes are selected
+
 
 ## Installation
 
@@ -444,6 +452,8 @@ function MyCustomControl() {
   // Your custom control implementation
 }
 ```
+
+
 
 ## Contributing
 
