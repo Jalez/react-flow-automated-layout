@@ -40,6 +40,7 @@ function FlowDiagram() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   
   // Maps for parent-child relationships (required by LayoutProvider)
+  // Note: include a 'no-parent' key grouping all nodes without a parent when constructing this map
   const [parentIdWithNodes, setParentIdWithNodes] = useState(new Map());
   const [nodeIdWithNode, setNodeIdWithNode] = useState(new Map());
   
@@ -396,7 +397,7 @@ Shows how to build your own custom UI controls by accessing the layout context d
 | initialParentResizingOptions | object | See below | Options for parent container resizing |
 | updateNodes | (nodes: Node[]) => void | | Callback to update nodes |
 | updateEdges | (edges: Edge[]) => void | | Callback to update edges |
-| parentIdWithNodes | Map<string, Node[]> | | Map of parent IDs to child nodes |
+| parentIdWithNodes | Map<string, Node[]> | | Map of parent IDs to child nodes. Must include a 'no-parent' key grouping top-level nodes without a parent. |
 | nodeIdWithNode | Map<string, Node> | | Map of node IDs to node objects |
 
 #### Default Parent Resizing Options
