@@ -14,19 +14,27 @@ const filterSelectedParentNodes = (
   parentIdWithNodes: Map<string, Node[]>,
   nodeIdWithNode: Map<string, Node>
 ): string[] => {
-  if (!selectedNodeIds || selectedNodeIds.length === 0) {
+  if (selectedNodeIds.length === 0) {
     return [];
   }
 
-  // Step 1: Keep only IDs that are parent nodes (exist in parentIdWithNodes)
-  const parentNodeIds = selectedNodeIds.filter(id => parentIdWithNodes.has(id));
+  // Step 1: Include parents of selected nodes to ensure they are processed
+  const parentIdsOfSelection = selectedNodeIds
+    .map(id => nodeIdWithNode.get(id)?.parentId)
+    .filter((pid): pid is string => Boolean(pid));
+  const effectiveSelectedIds = Array.from(
+    new Set([...selectedNodeIds, ...parentIdsOfSelection])
+  );
+
+  // Step 2: Keep only IDs that are parent nodes (exist in parentIdWithNodes)
+  const parentNodeIds = effectiveSelectedIds.filter(id => parentIdWithNodes.has(id));
   
   // If we have no parent nodes selected, include "no-parent" to process root nodes
   if (parentNodeIds.length === 0) {
     return ["no-parent"];
   }
   
-  // Step 2: Filter out parents that are children of other selected parents
+  // Step 3: Filter out parents that are children of other selected parents
   // to avoid redundant processing
   const filteredParentIds = parentNodeIds.filter(parentId => {
     const node = nodeIdWithNode.get(parentId);
