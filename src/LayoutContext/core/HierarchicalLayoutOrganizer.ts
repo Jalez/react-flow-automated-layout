@@ -171,7 +171,6 @@ export const fixParentNodeDimensions = (
     if (!node.style) {
         node.style = {};
     }
-    console.log("Fixing node dimensions", node, width, height);
     node.width = width;
     node.height = height;
     node.measured = {
