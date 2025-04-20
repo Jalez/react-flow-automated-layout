@@ -38,6 +38,7 @@ export const calculateLayoutWithDagre = (
   });
 
   nodes.forEach((node: Node) => {
+    console.log("Node for dagre", node);
     // Use actual node dimensions from style or fall back to configurable defaults
     const width = Number(node.style?.width) || defaultNodeWidth;
     const height = Number(node.style?.height) || defaultNodeHeight;

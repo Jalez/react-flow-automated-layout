@@ -45,7 +45,7 @@ export const organizeLayoutRecursively = (
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     
-    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
+    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges, udpatedParentNode } =
     layoutSingleContainer(
         parentNodeId,
         direction,
@@ -59,6 +59,16 @@ export const organizeLayoutRecursively = (
         defaultNodeHeight,
         LayoutAlgorithm
     );
+
+    // If the parent node has been updated, we need to update its parent as well
+    if(udpatedParentNode) {
+        const updatedParentId = udpatedParentNode.parentId || "no-parent";
+        const siblingNodes = parentIdWithNodes.get(updatedParentId) || [];
+        const updatedSiblings = siblingNodes.map(sibling =>
+            sibling.id === udpatedParentNode.id ? udpatedParentNode : sibling
+        );
+        parentIdWithNodes.set(updatedParentId, updatedSiblings);
+    }
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
     if(!parentNode) {
@@ -117,9 +127,13 @@ export const layoutSingleContainer = (
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
-): { updatedNodes: Node[], updatedEdges: Edge[] } => {
+): { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node } => {
     const nodesToLayout = parentIdWithNodes.get(parentNodeId);
     if (!nodesToLayout) {
+        return { updatedNodes: [], updatedEdges: [] };
+    }
+    if(nodesToLayout.length === 0) {
+
         return { updatedNodes: [], updatedEdges: [] };
     }
     const edgesToLayout = getEdgesOfNodes(nodesToLayout, edges);
@@ -134,13 +148,18 @@ export const layoutSingleContainer = (
         defaultNodeWidth,
         defaultNodeHeight
     );
+    
     const parentNode = nodeIdWithNode.get(parentNodeId);
     if(parentNode) {
         fixParentNodeDimensions(parentNode, width, height);
     }
+
+    // Update the parent node in the parentIdWithNodes map if it has a parent
     return {
         updatedNodes: [...layoutedNodes],
         updatedEdges: [...layoutedEdges],
+        udpatedParentNode: parentNode || undefined,
+
     };
 }
 
@@ -152,8 +171,13 @@ export const fixParentNodeDimensions = (
     if (!node.style) {
         node.style = {};
     }
+    console.log("Fixing node dimensions", node, width, height);
     node.width = width;
     node.height = height;
+    node.measured = {
+        width: width,
+        height: height,
+    }
     node.style.width = width;
     node.style.height = height;
     return node;
@@ -224,7 +248,7 @@ export const organizeLayoutByTreeDepth = (
         const parentIds = nodesByDepth.get(depth) || [];
         
         for (const parentId of parentIds) {
-            const { updatedNodes, updatedEdges } = layoutSingleContainer(
+            const { updatedNodes, updatedEdges, udpatedParentNode } = layoutSingleContainer(
                 parentId,
                 direction,
                 parentIdWithNodes,
@@ -237,6 +261,14 @@ export const organizeLayoutByTreeDepth = (
                 defaultNodeHeight,
                 LayoutAlgorithm
             );
+            if (udpatedParentNode) {
+                const updatedParentParentId = udpatedParentNode.parentId || "no-parent";
+                const siblingNodes = parentIdWithNodes.get(updatedParentParentId) || [];
+                const updatedSiblings = siblingNodes.map(sibling =>
+                    sibling.id === udpatedParentNode.id ? udpatedParentNode : sibling
+                );
+                parentIdWithNodes.set(updatedParentParentId, updatedSiblings);
+            }
             
             // Merge with already processed nodes and edges
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
