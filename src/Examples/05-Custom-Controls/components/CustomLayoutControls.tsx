@@ -137,7 +137,6 @@ const CustomLayoutControls = () => {
     direction,
     autoLayout,
     nodeSpacing,
-    layerSpacing,
     layoutInProgress,
     setDirection,
     setAutoLayout,
