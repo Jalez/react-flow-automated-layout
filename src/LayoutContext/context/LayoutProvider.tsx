@@ -90,11 +90,11 @@ export function LayoutProvider({
         ...customEngines,
     });
 
-    const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+    const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
 
     // the passed handler has to be memoized, otherwise the hook will not work correctly
     const onChange = useCallback(({ nodes }: { nodes: Node[]; }) => {
-        setSelectedNodes(nodes.map((node: Node) => node.id));
+        setSelectedNodes(nodes);
     }, []);
 
     useOnSelectionChange({

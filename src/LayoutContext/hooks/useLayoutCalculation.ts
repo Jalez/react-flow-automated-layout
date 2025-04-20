@@ -25,7 +25,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
  * @returns Object containing updated nodes and edges
  */
 const processSelectedNodes = (
-  selectedNodeIds: string[],
+  selectedNodes: Node[],
   dagreDirection: string,
   parentIdWithNodes: Map<string, Node[]>,
   nodeIdWithNode: Map<string, Node>,
@@ -39,10 +39,12 @@ const processSelectedNodes = (
 ): { nodes: Node[], edges: Edge[] } => {
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
-    selectedNodeIds,
+    selectedNodes,
     parentIdWithNodes,
     nodeIdWithNode
   );
+
+  console.log("Filtered parent IDs for layout:", filteredParentIds);
   
   if (filteredParentIds.length === 0) {
     return { nodes, edges };
@@ -114,7 +116,7 @@ export const useLayoutCalculation = (
   const calculateLayout = useCallback(async (
     nodes: Node[],
     edges: Edge[],
-    selectedNodeIds?: string[]
+    selectedNodes?: Node[]
   ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
     // Get the appropriate layout engine from engines
     const engine = layoutEngines[algorithm] || layoutEngines.dagre;
@@ -130,10 +132,11 @@ export const useLayoutCalculation = (
     const margin = parentResizingOptions.padding.horizontal;
     
     // If we have selected specific nodes, process only those
-    if (selectedNodeIds && selectedNodeIds.length > 0) {
-      console.log("Selected nodes for layout:", selectedNodeIds);
+    if (selectedNodes && selectedNodes.length > 0) {
+      
+      console.log("Selected nodes for layout:", selectedNodes);
       return processSelectedNodes(
-        selectedNodeIds,
+        selectedNodes,
         dagreDirection,
         parentIdWithNodes,
         nodeIdWithNode,
@@ -146,6 +149,7 @@ export const useLayoutCalculation = (
         nodeHeight
       );
     } else {
+      console.log("Calculating layout for all nodes");
       // Use our helper function to process the entire tree in depth order
       const nodeTree = buildNodeTree(parentIdWithNodes, nodeIdWithNode);
       const {updatedNodes, updatedEdges} =  organizeLayoutByTreeDepth(

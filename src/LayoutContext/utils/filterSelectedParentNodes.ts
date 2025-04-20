@@ -10,17 +10,14 @@ import { Node } from "@xyflow/react";
  * @returns Array of filtered parent node IDs that should be processed
  */
 const filterSelectedParentNodes = (
-  selectedNodeIds: string[],
+  selectedNodes: Node[],
   parentIdWithNodes: Map<string, Node[]>,
   nodeIdWithNode: Map<string, Node>
 ): string[] => {
-  if (selectedNodeIds.length === 0) {
-    return [];
-  }
-
   // Step 1: Include parents of selected nodes to ensure they are processed
-  const parentIdsOfSelection = selectedNodeIds
-    .map(id => nodeIdWithNode.get(id)?.parentId)
+  const selectedNodeIds = selectedNodes.map(node => node.id);
+  const parentIdsOfSelection = selectedNodes
+    .map(node => node.parentId)
     .filter((pid): pid is string => Boolean(pid));
   const effectiveSelectedIds = Array.from(
     new Set([...selectedNodeIds, ...parentIdsOfSelection])
@@ -28,11 +25,6 @@ const filterSelectedParentNodes = (
 
   // Step 2: Keep only IDs that are parent nodes (exist in parentIdWithNodes)
   const parentNodeIds = effectiveSelectedIds.filter(id => parentIdWithNodes.has(id));
-  
-  // If we have no parent nodes selected, include "no-parent" to process root nodes
-  if (parentNodeIds.length === 0) {
-    return ["no-parent"];
-  }
   
   // Step 3: Filter out parents that are children of other selected parents
   // to avoid redundant processing
@@ -44,10 +36,11 @@ const filterSelectedParentNodes = (
     return !node.parentId || !parentNodeIds.includes(node.parentId);
   });
   
-  // Always include "no-parent" to ensure top-level nodes are processed
-  if (!filteredParentIds.includes("no-parent")) {
-    filteredParentIds.unshift("no-parent");
+  
+  if (filteredParentIds.length === 0) {
+    return ["no-parent"];
   }
+  
   
   return filteredParentIds;
 };
