@@ -21,6 +21,14 @@ A React library for automated layout of nested node graphs with parent-child rel
 
 ## Patch Updates
 
+### 0.3.2 (2025-04-20)
+
+- **Selection Handling**: Refactored to use Node objects directly, improving type safety and reducing object lookups
+- **Parent Node Dimensions**: Added measured property for more accurate parent node dimension tracking
+- **Layout Engine**: Enhanced parent node handling in recursive layouts with better dimension updates and parent-child relationships
+- **Performance**: Improved node/edge merging performance using Map-based lookups
+- **Cleanup**: Removed debug logging statements
+
 ### 0.3.1 (2025-04-18)
 
 - **Parent Inclusion Fix**: Automatically include a selected child’s parent node to ensure accurate automated layouts when only child nodes are selected
