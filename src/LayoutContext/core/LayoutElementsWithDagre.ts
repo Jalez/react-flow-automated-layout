@@ -69,6 +69,7 @@ export const calculateLayoutWithDagre = (
         x: nodeWithPosition.x - dagreWidth / 2,
         y: nodeWithPosition.y - dagreHeight / 2,
       },
+      selected: false,
     };
 
     return newNode;
