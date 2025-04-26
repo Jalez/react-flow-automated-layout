@@ -13,7 +13,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
  * 
  * @param selectedNodeIds IDs of selected nodes to process for layout
  * @param dagreDirection Direction for layout algorithm
- * @param parentIdWithNodes Map of parent IDs to their child nodes
+ * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
  * @param nodeIdWithNode Map of node IDs to nodes
  * @param nodes All nodes in the graph
  * @param edges All edges in the graph
@@ -27,7 +27,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
 const processSelectedNodes = (
   selectedNodes: Node[],
   dagreDirection: string,
-  parentIdWithNodes: Map<string, Node[]>,
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
   nodeIdWithNode: Map<string, Node>,
   nodes: Node[],
   edges: Edge[],
@@ -40,7 +40,7 @@ const processSelectedNodes = (
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
     selectedNodes,
-    parentIdWithNodes,
+    nodeParentIdMapWithChildIdSet,
     nodeIdWithNode
   );
   
@@ -57,7 +57,7 @@ const processSelectedNodes = (
     const { updatedNodes, updatedEdges } = organizeLayoutRecursively(
       parentId,
       dagreDirection as any,
-      parentIdWithNodes,
+      nodeParentIdMapWithChildIdSet,
       nodeIdWithNode,
       edges,
       margin,
@@ -78,18 +78,16 @@ const processSelectedNodes = (
     });
   }
   
-  // Performance improvement: Use Maps for faster merging of updated and non-updated elements
-  // Create final nodes array by merging original nodes with updates
-  const finalNodes = nodes.map(node => 
+  // Convert maps to arrays
+  const updatedNodes = nodes.map(node => 
     updatedNodesMap.has(node.id) ? updatedNodesMap.get(node.id)! : node
   );
   
-  // Create final edges array by merging original edges with updates
-  const finalEdges = edges.map(edge => 
+  const updatedEdges = edges.map(edge => 
     updatedEdgesMap.has(edge.id) ? updatedEdgesMap.get(edge.id)! : edge
   );
   
-  return { nodes: finalNodes, edges: finalEdges };
+  return { nodes: updatedNodes, edges: updatedEdges };
 };
 
 /**
@@ -100,12 +98,13 @@ export const useLayoutCalculation = (
   direction: LayoutDirection,
   algorithm: string,
   parentResizingOptions: any,
-  parentIdWithNodes: Map<string, Node[]>,
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
   nodeIdWithNode: Map<string, Node>,
   nodeSpacing: number,
   layerSpacing: number,
   nodeWidth: number = 172,
-  nodeHeight: number = 36
+  nodeHeight: number = 36,
+  layoutHidden: boolean = false
 ) => {
   
   /**
@@ -122,6 +121,19 @@ export const useLayoutCalculation = (
       console.error(`Layout engine "${algorithm}" not found`);
       return { nodes, edges };
     }
+    
+    // Filter out hidden nodes if layoutHidden is false
+    const filteredNodes = layoutHidden 
+      ? nodes 
+      : nodes.filter(node => !node.hidden);
+    
+    // Filter edges to only include connections between visible nodes
+    const visibleNodeIds = new Set(filteredNodes.map(node => node.id));
+    const filteredEdges = layoutHidden
+      ? edges
+      : edges.filter(edge => 
+          visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+        );
         
     // Convert direction to format RecursiveLayoutContainerOrganizer expects
     const dagreDirection = convertDirection(direction);
@@ -129,30 +141,41 @@ export const useLayoutCalculation = (
     // The margin to use for layout
     const margin = parentResizingOptions.padding.horizontal;
     
-    // If we have selected specific nodes, process only those
+    let updatedNodes: Node[] = [];
+    let updatedEdges: Edge[] = [];
+    
+    // Process based on whether we have selected nodes or not
     if (selectedNodes && selectedNodes.length > 0) {
-      return processSelectedNodes(
-        selectedNodes,
+      // Also filter selected nodes if needed
+      const filteredSelectedNodes = layoutHidden
+        ? selectedNodes
+        : selectedNodes.filter(node => !node.hidden);
+      
+      const result = processSelectedNodes(
+        filteredSelectedNodes,
         dagreDirection,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
-        nodes,
-        edges,
+        filteredNodes,
+        filteredEdges,
         margin,
         nodeSpacing,
         layerSpacing,
         nodeWidth,
         nodeHeight
       );
+      
+      updatedNodes = result.nodes;
+      updatedEdges = result.edges;
     } else {
       // Use our helper function to process the entire tree in depth order
-      const nodeTree = buildNodeTree(parentIdWithNodes, nodeIdWithNode);
-      const {updatedNodes, updatedEdges} =  organizeLayoutByTreeDepth(
+      const nodeTree = buildNodeTree(nodeParentIdMapWithChildIdSet, nodeIdWithNode);
+      const result = organizeLayoutByTreeDepth(
         nodeTree,
         dagreDirection,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
-        edges,
+        filteredEdges,
         margin,
         nodeSpacing,
         layerSpacing,
@@ -160,22 +183,35 @@ export const useLayoutCalculation = (
         nodeHeight
       );
 
-      return {
-        nodes: updatedNodes,
-        edges: updatedEdges
-      };
+      updatedNodes = result.updatedNodes;
+      updatedEdges = result.updatedEdges;
     }
+
+    // Merge the updated nodes with the original nodes that were filtered out (hidden nodes)
+    const finalNodes = nodes.map(node => {
+      if (!layoutHidden && node.hidden) {
+        return node; // Keep hidden nodes as they are
+      }
+      const updatedNode = updatedNodes.find(n => n.id === node.id);
+      return updatedNode || node;
+    });
+
+    return {
+      nodes: finalNodes,
+      edges: updatedEdges
+    };
   }, [
     algorithm, 
     direction, 
     layoutEngines,
     parentResizingOptions.padding.horizontal,
-    parentIdWithNodes,
+    nodeParentIdMapWithChildIdSet,
     nodeIdWithNode,
     nodeSpacing,
     layerSpacing,
     nodeWidth,
-    nodeHeight
+    nodeHeight,
+    layoutHidden
   ]);
 
   return { calculateLayout };

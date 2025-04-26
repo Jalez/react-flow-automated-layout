@@ -21,7 +21,7 @@ const MARGIN = 10;
  * 
  * @param parentNodeId - The parent node to start layout from
  * @param direction - The direction of the layout
- * @param parentIdWithNodes - A map of parent node ids to their child nodes
+ * @param nodeParentIdMapWithChildIdSet - A map of parent node ids to their set of child IDs
  * @param nodeIdWithNode - A map of node ids to their nodes
  * @param edges - The edges to layout
  * @param margin - The margin to use for the layout
@@ -34,7 +34,7 @@ const MARGIN = 10;
 export const organizeLayoutRecursively = (
     parentNodeId: string,
     direction: Direction,
-    parentIdWithNodes: Map<string, Node[]>,
+    nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
     nodeIdWithNode: Map<string, Node>,
     edges: Edge[],
     margin: number = MARGIN,
@@ -45,11 +45,11 @@ export const organizeLayoutRecursively = (
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     
-    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges, udpatedParentNode } =
+    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
     layoutSingleContainer(
         parentNodeId,
         direction,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
         edges,
         margin,
@@ -60,16 +60,6 @@ export const organizeLayoutRecursively = (
         LayoutAlgorithm
     );
 
-    // If the parent node has been updated, we need to update its parent as well
-    if(udpatedParentNode) {
-        const updatedParentId = udpatedParentNode.parentId || "no-parent";
-        const siblingNodes = parentIdWithNodes.get(updatedParentId) || [];
-        const updatedSiblings = siblingNodes.map(sibling =>
-            sibling.id === udpatedParentNode.id ? udpatedParentNode : sibling
-        );
-        parentIdWithNodes.set(updatedParentId, updatedSiblings);
-    }
-
     const parentNode = nodeIdWithNode.get(parentNodeId);
     if(!parentNode) {
         return { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges };
@@ -78,7 +68,7 @@ export const organizeLayoutRecursively = (
     const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = organizeLayoutRecursively(
         parentNode.parentId || "no-parent",
         direction,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
         edges,
         margin,
@@ -104,7 +94,7 @@ export const organizeLayoutRecursively = (
  * 
  * @param parentNodeId - The parent node to layout
  * @param direction - The direction of the layout
- * @param parentIdWithNodes - A map of parent node ids to their child nodes
+ * @param nodeParentIdMapWithChildIdSet - A map of parent node ids to their set of child IDs
  * @param nodeIdWithNode - A map of node ids to their nodes
  * @param edges - The edges to layout
  * @param margin - The margin to use for the layout
@@ -113,12 +103,12 @@ export const organizeLayoutRecursively = (
  * @param defaultNodeWidth - Default width for nodes without explicit width
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
- * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
+ * @returns { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }
  */
 export const layoutSingleContainer = (
     parentNodeId: string,
     direction: Direction,
-    parentIdWithNodes: Map<string, Node[]>,
+    nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
     nodeIdWithNode: Map<string, Node>,
     edges: Edge[],
     margin: number = MARGIN,
@@ -128,14 +118,29 @@ export const layoutSingleContainer = (
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node } => {
-    const nodesToLayout = parentIdWithNodes.get(parentNodeId);
-    if (!nodesToLayout) {
+    // Get the set of child IDs for this parent
+    const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
+    if (!childIdSet) {
         return { updatedNodes: [], updatedEdges: [] };
     }
-    if(nodesToLayout.length === 0) {
-
+    
+    if(childIdSet.size === 0) {
         return { updatedNodes: [], updatedEdges: [] };
     }
+    
+    // Convert the Set of IDs to an array of actual Node objects
+    const nodesToLayout: Node[] = [];
+    childIdSet.forEach(childId => {
+        const node = nodeIdWithNode.get(childId);
+        if (node) {
+            nodesToLayout.push(node);
+        }
+    });
+    
+    if (nodesToLayout.length === 0) {
+        return { updatedNodes: [], updatedEdges: [] };
+    }
+    
     const edgesToLayout = getEdgesOfNodes(nodesToLayout, edges);
     const { nodes: layoutedNodes, edges: layoutedEdges, width, height } =
     LayoutAlgorithm(
@@ -154,12 +159,10 @@ export const layoutSingleContainer = (
         fixParentNodeDimensions(parentNode, width, height);
     }
 
-    // Update the parent node in the parentIdWithNodes map if it has a parent
     return {
         updatedNodes: [...layoutedNodes],
         updatedEdges: [...layoutedEdges],
         udpatedParentNode: parentNode || undefined,
-
     };
 }
 
@@ -191,7 +194,7 @@ export const fixParentNodeDimensions = (
  * 
  * @param parentTree - The tree structure of parent nodes
  * @param direction - The direction of the layout
- * @param parentIdWithNodes - A map of parent node ids to their child nodes
+ * @param nodeParentIdMapWithChildIdSet - A map of parent node ids to their set of child IDs
  * @param nodeIdWithNode - A map of node ids to their nodes
  * @param edges - The edges to layout
  * @param margin - The margin to use for the layout
@@ -205,7 +208,7 @@ export const fixParentNodeDimensions = (
 export const organizeLayoutByTreeDepth = (
     parentTree: TreeNode[],
     direction: Direction,
-    parentIdWithNodes: Map<string, Node[]>,
+    nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
     nodeIdWithNode: Map<string, Node>,
     edges: Edge[],
     margin: number = MARGIN,
@@ -247,10 +250,10 @@ export const organizeLayoutByTreeDepth = (
         const parentIds = nodesByDepth.get(depth) || [];
         
         for (const parentId of parentIds) {
-            const { updatedNodes, updatedEdges, udpatedParentNode } = layoutSingleContainer(
+            const { updatedNodes, updatedEdges } = layoutSingleContainer(
                 parentId,
                 direction,
-                parentIdWithNodes,
+                nodeParentIdMapWithChildIdSet,
                 nodeIdWithNode,
                 edges,
                 margin,
@@ -260,14 +263,6 @@ export const organizeLayoutByTreeDepth = (
                 defaultNodeHeight,
                 LayoutAlgorithm
             );
-            if (udpatedParentNode) {
-                const updatedParentParentId = udpatedParentNode.parentId || "no-parent";
-                const siblingNodes = parentIdWithNodes.get(updatedParentParentId) || [];
-                const updatedSiblings = siblingNodes.map(sibling =>
-                    sibling.id === udpatedParentNode.id ? udpatedParentNode : sibling
-                );
-                parentIdWithNodes.set(updatedParentParentId, updatedSiblings);
-            }
             
             // Merge with already processed nodes and edges
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
@@ -279,7 +274,7 @@ export const organizeLayoutByTreeDepth = (
     const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = layoutSingleContainer(
         "no-parent",
         direction,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
         edges,
         margin,
@@ -292,7 +287,7 @@ export const organizeLayoutByTreeDepth = (
     
     // Merge with already processed nodes and edges
     allUpdatedNodes = [...rootUpdatedNodes,...allUpdatedNodes];
-    allUpdatedEdges = [ ...rootUpdatedEdges,...allUpdatedEdges];
+    allUpdatedEdges = [...rootUpdatedEdges,...allUpdatedEdges];
     
     return {
         updatedNodes: allUpdatedNodes,
