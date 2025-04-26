@@ -27,10 +27,11 @@ interface LayoutProviderProps {
         height?: number;
     };
     initialParentResizingOptions?: Partial<ParentResizingOptions>;
+    initialLayoutHidden?: boolean;
     layoutEngines?: Record<string, LayoutEngine>;
     updateNodes?: (nodes: Node[]) => void;
     updateEdges?: (edges: Edge[]) => void;
-    parentIdWithNodes: Map<string, Node[]>;
+    nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
     nodeIdWithNode: Map<string, Node>;
 }
 
@@ -47,10 +48,11 @@ export function LayoutProvider({
     initialSpacing = { node: 150, layer: 180 },
     initialNodeDimensions = { width: 172, height: 36 },
     initialParentResizingOptions,
+    initialLayoutHidden = false,
     layoutEngines: customEngines,
     updateNodes,
     updateEdges,
-    parentIdWithNodes,
+    nodeParentIdMapWithChildIdSet,
     nodeIdWithNode,
 }: LayoutProviderProps) {
     // Get ReactFlow instance
@@ -67,7 +69,8 @@ export function LayoutProvider({
     const [layerSpacing, setLayerSpacing] = useState<number>(initialSpacing.layer || 180);
     const [nodeWidth, setNodeWidth] = useState<number>(initialNodeDimensions.width || 100);
     const [nodeHeight, setNodeHeight] = useState<number>(initialNodeDimensions.height || 100);
-
+    const [layoutHidden, setLayoutHidden] = useState<boolean>(initialLayoutHidden);
+    const { getNodes, getEdges } = useReactFlow();
     // Refs to prevent infinite loops
     const applyingLayoutRef = useRef(false);
     const pendingSpacingUpdateRef = useRef<{ node?: number, layer?: number } | null>(null);
@@ -117,12 +120,13 @@ export function LayoutProvider({
         direction,
         algorithm,
         parentResizingOptions,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
         nodeSpacing,
         layerSpacing,
         nodeWidth,
-        nodeHeight
+        nodeHeight,
+        layoutHidden
     );
 
     // Register a new layout engine
@@ -147,23 +151,6 @@ export function LayoutProvider({
         }));
     }, [autoLayout]);
 
-    // Get nodes from ReactFlow
-    const getNodes = useCallback((): Node[] => {
-        try {
-            return reactFlowInstance?.getNodes() || [];
-        } catch (error) {
-            return [];
-        }
-    }, [reactFlowInstance]);
-
-    // Get edges from ReactFlow
-    const getEdges = useCallback((): Edge[] => {
-        try {
-            return reactFlowInstance?.getEdges() || [];
-        } catch (error) {
-            return [];
-        }
-    }, [reactFlowInstance]);
 
     // Apply layout to nodes and edges - with safeguards against recursive calls
     const applyLayout = useCallback(async (
@@ -239,10 +226,10 @@ export function LayoutProvider({
 
     // Effect to check when maps are populated and mark initialization complete
     useEffect(() => {
-        if (nodeIdWithNode.size > 0 && parentIdWithNodes.size > 0 && !childrenInitialized) {
+        if (nodeIdWithNode.size > 0 && nodeParentIdMapWithChildIdSet.size > 0 && !childrenInitialized) {
             setChildrenInitialized(true);
         }
-    }, [nodeIdWithNode, parentIdWithNodes, childrenInitialized]);
+    }, [nodeIdWithNode, nodeParentIdMapWithChildIdSet, childrenInitialized]);
 
     // Effect to update handle positions and reapply layout when autoLayout is enabled
     useEffect(() => {
@@ -256,8 +243,8 @@ export function LayoutProvider({
     useEffect(() => {
         // Generate a new structure signature based on parent IDs and their child counts
         const newStructure: Record<string, number> = {};
-        parentIdWithNodes.forEach((nodes, parentId) => {
-            newStructure[parentId] = nodes.length;
+        nodeParentIdMapWithChildIdSet.forEach((childIdSet, parentId) => {
+            newStructure[parentId] = childIdSet.size;
         });
         
         let hasChanged = false;
@@ -276,7 +263,7 @@ export function LayoutProvider({
         if (hasChanged) {
             setParentChildStructureChanged(newStructure)
         }
-    }, [parentIdWithNodes]);
+    }, [nodeParentIdMapWithChildIdSet]);
 
     // Provide the context value
     const contextValue: LayoutContextState = {
@@ -290,10 +277,11 @@ export function LayoutProvider({
         layerSpacing,
         nodeWidth,
         nodeHeight,
+        layoutHidden,
         parentResizingOptions,
         layoutEngines,
         layoutEngineOptions,
-        parentIdWithNodes,
+        nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
         updateNodes,
         updateEdges,
@@ -308,6 +296,7 @@ export function LayoutProvider({
         setLayerSpacing,
         setNodeWidth,
         setNodeHeight,
+        setLayoutHidden,
         setParentResizingOptions,
         setLayoutEngineOptions,
 

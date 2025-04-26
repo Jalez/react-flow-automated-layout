@@ -5,13 +5,13 @@ import { Node } from "@xyflow/react";
  * (parents that would include changes from other selected parents)
  * 
  * @param selectedNodeIds Array of node IDs that were selected
- * @param parentIdWithNodes Map of parent IDs to their child nodes
+ * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
  * @param nodeIdWithNode Map of node IDs to nodes
  * @returns Array of filtered parent node IDs that should be processed
  */
 const filterSelectedParentNodes = (
   selectedNodes: Node[],
-  parentIdWithNodes: Map<string, Node[]>,
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
   nodeIdWithNode: Map<string, Node>
 ): string[] => {
   // Step 1: Include parents of selected nodes to ensure they are processed
@@ -22,8 +22,8 @@ const filterSelectedParentNodes = (
   const effectiveSelectedIds = Array.from(
     new Set([...selectedNodeIds, ...parentIdsOfSelection])
   );
-  // Step 2: Keep only IDs that are parent nodes (exist in parentIdWithNodes)
-  const parentNodeIds = effectiveSelectedIds.filter(id => parentIdWithNodes.has(id));
+  // Step 2: Keep only IDs that are parent nodes (exist in nodeParentIdMapWithChildIdSet)
+  const parentNodeIds = effectiveSelectedIds.filter(id => nodeParentIdMapWithChildIdSet.has(id));
   
   // Step 3: Filter out parents that are children of other selected parents
   // to avoid redundant processing

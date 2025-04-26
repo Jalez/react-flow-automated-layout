@@ -38,6 +38,7 @@ export interface LayoutContextState {
   layerSpacing: number;
   nodeWidth: number;
   nodeHeight: number;
+  layoutHidden: boolean;
   
   // Parent resizing options
   parentResizingOptions: ParentResizingOptions;
@@ -47,7 +48,7 @@ export interface LayoutContextState {
   layoutEngineOptions: Record<string, any>;
   
   // Node relationship maps
-  parentIdWithNodes: Map<string, Node[]>;
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
   nodeIdWithNode: Map<string, Node>;
   
   // Optional callbacks for updating nodes/edges
@@ -64,6 +65,7 @@ export interface LayoutContextState {
   setLayerSpacing: (spacing: number) => void;
   setNodeWidth: (width: number) => void;
   setNodeHeight: (height: number) => void;
+  setLayoutHidden: (hidden: boolean) => void;
   setParentResizingOptions: (options: Partial<ParentResizingOptions>) => void;
   setLayoutEngineOptions: (options: Record<string, any>) => void;
   

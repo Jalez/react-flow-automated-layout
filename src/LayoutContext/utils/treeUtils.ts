@@ -15,12 +15,12 @@ export interface TreeNode {
  * The tree only includes parent nodes (nodes that have children).
  * The tree starts with root parent nodes (parent nodes without parents) at depth 0.
  * 
- * @param parentIdWithNodes Map of parent IDs to their child nodes
+ * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
  * @param nodeIdWithNode Map of node IDs to node objects
  * @returns An array of TreeNode objects representing root parent nodes, each containing its hierarchy
  */
 export const buildNodeTree = (
-  parentIdWithNodes: Map<string, Node[]>,
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
   nodeIdWithNode: Map<string, Node>
 ): TreeNode[] => {
   // Track processed nodes to avoid circular references
@@ -30,7 +30,7 @@ export const buildNodeTree = (
   const treeNodeMap = new Map<string, TreeNode>();
   
   // Create TreeNode objects only for parent nodes
-  parentIdWithNodes.forEach((_, id) => {
+  nodeParentIdMapWithChildIdSet.forEach((_, id) => {
     const node = nodeIdWithNode.get(id);
     if (node) {
       treeNodeMap.set(id, {
@@ -48,7 +48,7 @@ export const buildNodeTree = (
     if (processedNodes.has(nodeId)) return null;
     
     // Skip if this node is not a parent
-    if (!parentIdWithNodes.has(nodeId)) return null;
+    if (!nodeParentIdMapWithChildIdSet.has(nodeId)) return null;
     
     const node = nodeIdWithNode.get(nodeId);
     if (!node) return null;
@@ -57,13 +57,16 @@ export const buildNodeTree = (
     const treeNode = treeNodeMap.get(nodeId)!;
     treeNode.depth = currentDepth;
     
-    // Add children that are parents from parentIdWithNodes map
-    const childNodes = parentIdWithNodes.get(nodeId) || [];
-    for (const childNode of childNodes) {
-      if (parentIdWithNodes.has(childNode.id)) {
-        const childTreeNode = buildTreeRecursively(childNode.id, currentDepth + 1);
-        if (childTreeNode) {
-          treeNode.children.push(childTreeNode);
+    // Add children that are parents from nodeParentIdMapWithChildIdSet map
+    const childIds = nodeParentIdMapWithChildIdSet.get(nodeId) || new Set<string>();
+    for (const childId of childIds) {
+      if (nodeParentIdMapWithChildIdSet.has(childId)) {
+        const childNode = nodeIdWithNode.get(childId);
+        if (childNode) {
+          const childTreeNode = buildTreeRecursively(childId, currentDepth + 1);
+          if (childTreeNode) {
+            treeNode.children.push(childTreeNode);
+          }
         }
       }
     }
@@ -74,7 +77,7 @@ export const buildNodeTree = (
   // Find root parent nodes (parent nodes without parents or with non-existent parents)
   const rootNodes: TreeNode[] = [];
   
-  parentIdWithNodes.forEach((_, id) => {
+  nodeParentIdMapWithChildIdSet.forEach((_, id) => {
     const node = nodeIdWithNode.get(id);
     if (node) {
       // If node has no parent, or parent doesn't exist in our node map, it's a root
