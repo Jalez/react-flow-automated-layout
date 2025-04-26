@@ -44,7 +44,7 @@ const CustomControlsExample = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [childNodesInitialized, setChildNodesInitialized] = useState(false);
-    const [parentIdWithNodes, setParentIdWithNodes] = useState<Map<string, Node[]>>(new Map());
+    const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
     const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
 
     // Handle edge connections
@@ -70,7 +70,6 @@ const CustomControlsExample = () => {
     }, [setEdges]);
 
     // Initialize the parent-child relationships
-    // Initialize the parent-child relationships
     useEffect(() => {
         // Create child nodes with parent relationship
         const childNodesOfParentNode = createChildNodesToNode(initialNodes, parentNode);
@@ -78,34 +77,29 @@ const CustomControlsExample = () => {
         const allNodes = [parentNodesParent, parentNodesSibling, parentNode, ...childNodesOfParentNode, ...childNodesOfParentNodeSibling] as any[];
         setNodes(allNodes);
 
-        // Create parent-child relationship maps
-        const parentIdWithNodes = new Map<string, Node[]>();
+        // Create parent-child relationship maps using the new Set-based structure
+        const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
         const nodeIdWithNode = new Map<string, Node>();
 
         allNodes.forEach((node) => {
             // Add to node lookup map
             nodeIdWithNode.set(node.id, node);
 
-            // Add to appropriate parent's children list
-            if (node.parentId) {
-                if (!parentIdWithNodes.has(node.parentId)) {
-                    parentIdWithNodes.set(node.parentId, []);
-                }
-                parentIdWithNodes.get(node.parentId)?.push(node);
-            } else {
-                if (!parentIdWithNodes.has("no-parent")) {
-                    parentIdWithNodes.set("no-parent", []);
-                }
-                parentIdWithNodes.get("no-parent")?.push(node);
+            // Add to appropriate parent's children set
+            const parentId = node.parentId || "no-parent";
+            if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+                nodeParentIdMapWithChildIdSet.set(parentId, new Set());
             }
+            nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
         });
-        setParentIdWithNodes(parentIdWithNodes);
+        setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
         setNodeIdWithNode(nodeIdWithNode);
         setChildNodesInitialized(true);
     }, []);
+
     // Render the ReactFlow component with our LayoutProvider and custom controls
     return (
-        <>
+        <div style={{ width: '100%', height: '100%' }}>
             {childNodesInitialized && (
                 <LayoutProvider
                     initialDirection="DOWN"
@@ -122,7 +116,7 @@ const CustomControlsExample = () => {
                     }}
                     updateNodes={updateNodesHandler}
                     updateEdges={updateEdgesHandler}
-                    parentIdWithNodes={parentIdWithNodes}
+                    nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
                     nodeIdWithNode={nodeIdWithNode}
                 >
                     <ReactFlow
@@ -144,7 +138,7 @@ const CustomControlsExample = () => {
                     </ReactFlow>
                 </LayoutProvider>
             )}
-        </>
+        </div>
     );
 };
 

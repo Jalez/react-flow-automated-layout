@@ -54,43 +54,56 @@ const ParentSwitchExample = () => {
     // Initialize states
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<SwitchableNodeData >>(createInitialNodes());
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
-    const [parentIdWithNodes, setParentIdWithNodes] = useState<Map<string, Node[]>>(new Map());
+    const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
     const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
-    useEffect(() => {
-        //Go through all nodes and check if the parentId is in the map.
-        const newParentIdWithNodes = new Map<string, Node[]>();
-        const nodeIdWithNode = new Map<string, Node>();
-        nodes.forEach((node) => {
-            const parentId = node.parentId || "no-parent";
-            nodeIdWithNode.set(node.id, node);
-            if (!newParentIdWithNodes.has(parentId)) {
-                newParentIdWithNodes.set(parentId, []);
-            }
-            //If its not already in the map, push it there 
-            if (!newParentIdWithNodes.get(parentId)?.some((n) => n.id === node.id)) {
-                newParentIdWithNodes.get(parentId)?.push(node);
-            }
-            //if node has oldParentId, remove it from the old parentId
-            if (node.data.oldParentId) {
-                const oldParentId = node.data.oldParentId;
-                if (newParentIdWithNodes.has(oldParentId)) {
-                    const oldParentNodes = newParentIdWithNodes.get(oldParentId);
-                    if (oldParentNodes) {
-                        const index = oldParentNodes.findIndex((n) => n.id === node.id);
-                        if (index !== -1) {
-                            oldParentNodes.splice(index, 1);
-                        }
-                    }
-                }
-            }
-        }
-        );
-        // Update the parentIdWithNodes state
-        setParentIdWithNodes(newParentIdWithNodes);
-        setNodeIdWithNode(nodeIdWithNode);
-        
-    }, [nodes]);
+    const [isInitialized, setIsInitialized] = useState(false);
 
+    // Update nodes handler that matches what LayoutProvider expects
+    const updateNodesHandler = useCallback((updatedNodes: Node[]) => {
+        setNodes(updatedNodes as Node<SwitchableNodeData>[]);
+        
+        // Update our relationship maps
+        const updatedNodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
+        const updatedNodeIdWithNode = new Map<string, Node>();
+        
+        updatedNodes.forEach((node) => {
+            updatedNodeIdWithNode.set(node.id, node);
+            
+            const parentId = node.parentId || "no-parent";
+            if (!updatedNodeParentIdMapWithChildIdSet.has(parentId)) {
+                updatedNodeParentIdMapWithChildIdSet.set(parentId, new Set());
+            }
+            updatedNodeParentIdMapWithChildIdSet.get(parentId)!.add(node.id);
+        });
+        
+        setNodeParentIdMapWithChildIdSet(updatedNodeParentIdMapWithChildIdSet);
+        setNodeIdWithNode(updatedNodeIdWithNode);
+    }, [setNodes]);
+
+    // Initialize the parent-child relationships
+    useEffect(() => {
+        if (isInitialized) return;
+        
+        // Create parent-child relationship maps using the Set-based structure
+        const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
+        const nodeIdWithNode = new Map<string, Node>();
+        
+        nodes.forEach((node) => {
+            // Add to node lookup map
+            nodeIdWithNode.set(node.id, node);
+            
+            // Add to appropriate parent's children set
+            const parentId = node.parentId || "no-parent";
+            if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+                nodeParentIdMapWithChildIdSet.set(parentId, new Set());
+            }
+            nodeParentIdMapWithChildIdSet.get(parentId)!.add(node.id);
+        });
+        
+        setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
+        setNodeIdWithNode(nodeIdWithNode);
+        setIsInitialized(true);
+    }, [nodes, isInitialized]);
 
     // Handle edge connections
     const onConnect = useCallback(
@@ -109,79 +122,69 @@ const ParentSwitchExample = () => {
     // Update the layout maps when nodes change - simplified
     useEffect(() => {
         if (nodes.length === 0) return;
-        const parentIdWithNodes = new Map<string, Node[]>();
-        const nodeIdWithNode = new Map<string, Node>();
+        const newNodeIdWithNode = new Map<string, Node>();
         const parentIdWithChildSet = new Map<string, Set<string>>();
 
         nodes.forEach((node) => {
-            nodeIdWithNode.set(node.id, node);
+            newNodeIdWithNode.set(node.id, node);
 
             const parentId = node.parentId || "no-parent";
-            if (!parentIdWithNodes.has(parentId)) {
-                parentIdWithNodes.set(parentId, []);
-            }
-            parentIdWithNodes.get(parentId)?.push(node);
             if (!parentIdWithChildSet.has(parentId)) {
                 parentIdWithChildSet.set(parentId, new Set());
             }
             parentIdWithChildSet.get(parentId)?.add(node.id);
         });
 
-        setParentIdWithNodes(parentIdWithNodes);
-        setNodeIdWithNode(nodeIdWithNode);
+        setNodeIdWithNode(newNodeIdWithNode);
     }, []);
-
-    // Callbacks for LayoutProvider
-    const updateNodesHandler = useCallback((updatedNodes: Node[]) => {
-        setNodes(updatedNodes as any[]); 
-    }, [setNodes, nodes]);
-
 
     if(nodes.length === 0) {
         return <div style={{ width: '100%', height: '100%' }}></div>;
     }
     return (
-   
-            <LayoutProvider
-                initialDirection="DOWN"
-                initialAutoLayout={true}
-                initialPadding={50}
-                initialSpacing={{ node: 50, layer: 50 }}
-                initialParentResizingOptions={{
-                    padding: {
-                        horizontal: 50,
-                        vertical: 40,
-                    },
-                    minWidth: 150,
-                    minHeight: 150,
-                }}
-                updateNodes={updateNodesHandler}
-            
-                parentIdWithNodes={parentIdWithNodes}
-                nodeIdWithNode={nodeIdWithNode}
-            >
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    nodeTypes={nodeTypes}
-                    connectionLineType={ConnectionLineType.SmoothStep}
-                    fitView
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {isInitialized && (
+                <LayoutProvider
+                    initialDirection="DOWN"
+                    initialAutoLayout={true}
+                    initialPadding={50}
+                    initialSpacing={{ node: 50, layer: 50 }}
+                    initialParentResizingOptions={{
+                        padding: {
+                            horizontal: 50,
+                            vertical: 40,
+                        },
+                        minWidth: 150,
+                        minHeight: 150,
+                        respectHeaderHeight: true
+                    }}
+                    updateNodes={updateNodesHandler}
+                    nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
+                    nodeIdWithNode={nodeIdWithNode}
                 >
-                    <Panel position="top-right">
-                        <LayoutControls
-                            showDirectionControls={true}
-                            showAutoLayoutToggle={true}
-                            showSpacingControls={true}
-                            showApplyLayoutButton={true}
-                        />
-                    </Panel>
-                    <Background />
-                </ReactFlow>
-            </LayoutProvider>
-    
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        nodeTypes={nodeTypes}
+                        connectionLineType={ConnectionLineType.SmoothStep}
+                        fitView
+                    >
+                        <Panel position="top-right">
+                            <LayoutControls
+                                showDirectionControls={true}
+                                showAutoLayoutToggle={true}
+                                showSpacingControls={true}
+                                showApplyLayoutButton={true}
+                            />
+                        </Panel>
+                        <Background />
+                    </ReactFlow>
+                </LayoutProvider>
+            )}
+        </div>
     );
 };
 

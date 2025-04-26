@@ -58,8 +58,8 @@ const initialEdges: Edge[] = [
 export default function RemoveFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [childNodesInitialized, setChildNodesInitialized] = useState(false);
-  const [parentIdWithNodes, setParentIdWithNodes] = useState<Map<string, Node[]>>(new Map());
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
   const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
  
   const onConnect = useCallback(
@@ -67,29 +67,28 @@ export default function RemoveFlow() {
     [],
   );
 
-  // Initialize the parent-child relationships
+  // Initialize node data
   useEffect(() => {
-    const parentIdWithNodes = new Map<string, Node[]>();
+    // Initialize parent-child relationship maps
+    const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
     const nodeIdWithNode = new Map<string, Node>();
     
     nodes.forEach((node) => {
+      // Add to node lookup map
       nodeIdWithNode.set(node.id, node);
       
-      if (node.parentId) {
-        if (!parentIdWithNodes.has(node.parentId)) {
-          parentIdWithNodes.set(node.parentId, []);
-        }
-        parentIdWithNodes.get(node.parentId)?.push(node);
-      } else {
-        if(!parentIdWithNodes.has("no-parent")) {
-          parentIdWithNodes.set("no-parent", []);
-        }
-        parentIdWithNodes.get("no-parent")?.push(node);
+      // Add to parent-child relationship map
+      const parentId = node.parentId || "no-parent";
+      if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+        nodeParentIdMapWithChildIdSet.set(parentId, new Set());
       }
-    });        
-    setParentIdWithNodes(parentIdWithNodes);
+      nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
+    });
+    
+    setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
     setNodeIdWithNode(nodeIdWithNode);
-    setChildNodesInitialized(true);
+    
+    setIsInitialized(true);
   }, [nodes]);
 
   // Update nodes handler that matches what LayoutProvider expects
@@ -131,7 +130,7 @@ export default function RemoveFlow() {
  
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      {childNodesInitialized && (
+      {isInitialized && (
         <LayoutProvider
           initialDirection="DOWN"
           initialAutoLayout={true}
@@ -147,7 +146,7 @@ export default function RemoveFlow() {
           }}
           updateNodes={updateNodesHandler}
           updateEdges={updateEdgesHandler}
-          parentIdWithNodes={parentIdWithNodes}
+          nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
           nodeIdWithNode={nodeIdWithNode}
         >
           <ReactFlow

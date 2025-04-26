@@ -56,31 +56,37 @@ const AddNodeOnEdgeDrop = () => {
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const { screenToFlowPosition } = useReactFlow();
     const [childNodesInitialized, setChildNodesInitialized] = useState(false);
-    const [parentIdWithNodes, setParentIdWithNodes] = useState<Map<string, Node[]>>(new Map());
+    const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
     const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
 
     // Initialize the parent-child relationships
     useEffect(() => {
-        const parentIdWithNodes = new Map<string, Node[]>();
+        // Initialize parent-child relationship maps
+        const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
         const nodeIdWithNode = new Map<string, Node>();
-
+        
         nodes.forEach((node) => {
+            // Add to node lookup map
             nodeIdWithNode.set(node.id, node);
-
-            if (node.parentId) {
-                if (!parentIdWithNodes.has(node.parentId)) {
-                    parentIdWithNodes.set(node.parentId, []);
-                }
-                parentIdWithNodes.get(node.parentId)?.push(node);
-            } else {
-                if (!parentIdWithNodes.has("no-parent")) {
-                    parentIdWithNodes.set("no-parent", []);
-                }
-                parentIdWithNodes.get("no-parent")?.push(node);
+            
+            // Add to parent-child relationship map
+            const parentId = node.parentId || "no-parent";
+            if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+                nodeParentIdMapWithChildIdSet.set(parentId, new Set());
+            }
+            nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
+        });
+        
+        // Add each parent node type to the relationship map
+        ['input', 'output', 'default'].forEach((type) => {
+            if (!nodeParentIdMapWithChildIdSet.has(type)) {
+                nodeParentIdMapWithChildIdSet.set(type, new Set());
             }
         });
-        setParentIdWithNodes(parentIdWithNodes);
+        
+        setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
         setNodeIdWithNode(nodeIdWithNode);
+        
         setChildNodesInitialized(true);
     }, [nodes]);
 
@@ -148,7 +154,7 @@ const AddNodeOnEdgeDrop = () => {
             }}
             updateNodes={updateNodesHandler}
             updateEdges={updateEdgesHandler}
-            parentIdWithNodes={parentIdWithNodes}
+            nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
             nodeIdWithNode={nodeIdWithNode}
         >
             <ReactFlow
