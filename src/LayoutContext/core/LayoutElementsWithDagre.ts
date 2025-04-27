@@ -37,6 +37,8 @@ export const calculateLayoutWithDagre = (
     ranker: 'network-simplex'    // Use network simplex algorithm for better results
   });
 
+  //Remove nodes that are hidden
+
   nodes.forEach((node: Node) => {
     // Use actual node dimensions from style or fall back to configurable defaults
     const width = Number(node.style?.width) || defaultNodeWidth;
