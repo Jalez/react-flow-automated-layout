@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useEffect, useState, useRef } from 'react';
-import { Edge, Node, useReactFlow, useOnSelectionChange } from '@xyflow/react';
+import { Edge, Node, useReactFlow, useOnSelectionChange, useNodes, useEdges } from '@xyflow/react';
 import LayoutContext, {
     LayoutAlgorithm,
     LayoutContextState,
@@ -9,7 +9,7 @@ import LayoutContext, {
     useLayoutContext
 } from './LayoutContext';
 import { engines } from '../engines';
-import { DEFAULT_PARENT_RESIZING_OPTIONS, getSourcePosition, getTargetPosition } from '../utils/layoutProviderUtils';
+import { DEFAULT_PARENT_RESIZING_OPTIONS } from '../utils/layoutProviderUtils';
 import { useLayoutCalculation } from '../hooks/useLayoutCalculation';
 
 interface LayoutProviderProps {
@@ -27,7 +27,7 @@ interface LayoutProviderProps {
         height?: number;
     };
     initialParentResizingOptions?: Partial<ParentResizingOptions>;
-    initialLayoutHidden?: boolean;
+    includeHidden?: boolean;
     layoutEngines?: Record<string, LayoutEngine>;
     updateNodes?: (nodes: Node[]) => void;
     updateEdges?: (edges: Edge[]) => void;
@@ -48,7 +48,7 @@ export function LayoutProvider({
     initialSpacing = { node: 150, layer: 180 },
     initialNodeDimensions = { width: 172, height: 36 },
     initialParentResizingOptions,
-    initialLayoutHidden = false,
+    includeHidden = false,
     layoutEngines: customEngines,
     updateNodes,
     updateEdges,
@@ -57,6 +57,9 @@ export function LayoutProvider({
 }: LayoutProviderProps) {
     // Get ReactFlow instance
     const reactFlowInstance = useReactFlow();
+    // Use useNodes and useEdges hooks to get live data
+    const nodes = useNodes();
+    const edges = useEdges();
 
     const numberOfNodes = nodeIdWithNode.size;
     // State for layout settings
@@ -69,16 +72,25 @@ export function LayoutProvider({
     const [layerSpacing, setLayerSpacing] = useState<number>(initialSpacing.layer || 180);
     const [nodeWidth, setNodeWidth] = useState<number>(initialNodeDimensions.width || 100);
     const [nodeHeight, setNodeHeight] = useState<number>(initialNodeDimensions.height || 100);
-    const [layoutHidden, setLayoutHidden] = useState<boolean>(initialLayoutHidden);
-    const { getNodes, getEdges } = useReactFlow();
+    const [layoutHidden, setLayoutHidden] = useState<boolean>(includeHidden);
+    const [nodesLength, setNodesLength] = useState<number>(nodes.length);
+
+    useEffect(() => {
+        console.log("Node map size:", nodeIdWithNode.size);
+        console.log("Nodes length:", nodes.length);
+        if(nodes.length !== nodesLength) {
+            console.log("Nodes length changed:", nodes.length);
+            setNodesLength(nodes.length);
+        }
+    }
+    , [nodes, nodeIdWithNode, nodesLength]);
     // Refs to prevent infinite loops
     const applyingLayoutRef = useRef(false);
     const pendingSpacingUpdateRef = useRef<{ node?: number, layer?: number } | null>(null);
-    
     // Ref to track structure changes independent of node position changes
     
     // Track if parent-child structure has changed
-    const [parentChildStructure, setParentChildStructureChanged] = useState<Record<string, number>>({});
+    const [parentChildStructure, setParentChildStructure] = useState<Record<string, number>>({});
 
     // State for parent resizing options
     const [parentResizingOptions, setParentResizingOptionsState] = useState<ParentResizingOptions>({
@@ -104,15 +116,13 @@ export function LayoutProvider({
         onChange,
     });
 
+
+
     // State for layout engine options
     const [layoutEngineOptions, setLayoutEngineOptions] = useState<Record<string, any>>({});
 
     // Add a state to track if children are initialized
     const [childrenInitialized, setChildrenInitialized] = useState(false);
-
-    // Compute handle positions based on direction
-    const sourcePosition = getSourcePosition(direction);
-    const targetPosition = getTargetPosition(direction);
 
     // Use layout calculation hook
     const { calculateLayout } = useLayoutCalculation(
@@ -162,18 +172,19 @@ export function LayoutProvider({
             return { nodes: inputNodes, edges: inputEdges };
         }
 
-        const nodes = inputNodes.length > 0 ? inputNodes : getNodes();
-        const edges = inputEdges.length > 0 ? inputEdges : getEdges();
+        // Use the reactive nodes and edges from hooks instead of getNodes/getEdges
+        const nodesData = inputNodes.length > 0 ? inputNodes : nodes;
+        const edgesData = inputEdges.length > 0 ? inputEdges : edges;
 
-        if (nodes.length === 0) {
-            return { nodes, edges };
+        if (nodesData.length === 0) {
+            return { nodes: nodesData, edges: edgesData };
         }
 
         try {
             setLayoutInProgress(true);
             applyingLayoutRef.current = true;
 
-            const result = await calculateLayout(nodes, edges, selectedNodes);
+            const result = await calculateLayout(nodesData, edgesData, selectedNodes);
 
             // Update nodes and edges
             if (updateNodes) {
@@ -202,25 +213,20 @@ export function LayoutProvider({
             return result;
         } catch (error) {
             console.error("Error applying layout:", error);
-            return { nodes, edges };
+            return { nodes: nodesData, edges: edgesData };
         } finally {
-
             setLayoutInProgress(false);
             applyingLayoutRef.current = false;
-
         }
     }, [
         layoutInProgress,
-        getNodes,
-        getEdges,
+        nodes, // Use nodes from hook
+        edges, // Use edges from hook
         selectedNodes,
-        sourcePosition,
-        targetPosition,
         calculateLayout,
         direction,
         updateNodes,
         updateEdges,
-
         reactFlowInstance,
     ]);
 
@@ -237,7 +243,7 @@ export function LayoutProvider({
             // Update handle positions based on new directions
             applyLayout();
         }
-    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure]);
+    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength]);
 
     // Calculate parent-child structure signature
     useEffect(() => {
@@ -261,7 +267,7 @@ export function LayoutProvider({
         }
         // Update ref and state if changed
         if (hasChanged) {
-            setParentChildStructureChanged(newStructure)
+            setParentChildStructure(newStructure)
         }
     }, [nodeParentIdMapWithChildIdSet]);
 
