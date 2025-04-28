@@ -44,24 +44,24 @@ export const organizeLayoutRecursively = (
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
-    
+
     const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
-    layoutSingleContainer(
-        parentNodeId,
-        direction,
-        nodeParentIdMapWithChildIdSet,
-        nodeIdWithNode,
-        edges,
-        margin,
-        nodeSpacing,
-        layerSpacing,
-        defaultNodeWidth,
-        defaultNodeHeight,
-        LayoutAlgorithm
-    );
+        layoutSingleContainer(
+            parentNodeId,
+            direction,
+            nodeParentIdMapWithChildIdSet,
+            nodeIdWithNode,
+            edges,
+            margin,
+            nodeSpacing,
+            layerSpacing,
+            defaultNodeWidth,
+            defaultNodeHeight,
+            LayoutAlgorithm
+        );
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
-    if(!parentNode) {
+    if (!parentNode) {
         return { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges };
     }
 
@@ -123,11 +123,11 @@ export const layoutSingleContainer = (
     if (!childIdSet) {
         return { updatedNodes: [], updatedEdges: [] };
     }
-    
-    if(childIdSet.size === 0) {
+
+    if (childIdSet.size === 0) {
         return { updatedNodes: [], updatedEdges: [] };
     }
-    
+
     // Convert the Set of IDs to an array of actual Node objects
     const nodesToLayout: Node[] = [];
     childIdSet.forEach(childId => {
@@ -136,26 +136,26 @@ export const layoutSingleContainer = (
             nodesToLayout.push(node);
         }
     });
-    
+
     if (nodesToLayout.length === 0) {
         return { updatedNodes: [], updatedEdges: [] };
     }
-    
+
     const edgesToLayout = getEdgesOfNodes(nodesToLayout, edges);
     const { nodes: layoutedNodes, edges: layoutedEdges, width, height } =
-    LayoutAlgorithm(
-        nodesToLayout, 
-        edgesToLayout, 
-        direction, 
-        margin, 
-        nodeSpacing, 
-        layerSpacing,
-        defaultNodeWidth,
-        defaultNodeHeight
-    );
-    
+        LayoutAlgorithm(
+            nodesToLayout,
+            edgesToLayout,
+            direction,
+            margin,
+            nodeSpacing,
+            layerSpacing,
+            defaultNodeWidth,
+            defaultNodeHeight
+        );
+
     const parentNode = nodeIdWithNode.get(parentNodeId);
-    if(parentNode) {
+    if (parentNode && width && height) {
         fixParentNodeDimensions(parentNode, width, height);
     }
 
@@ -221,34 +221,34 @@ export const organizeLayoutByTreeDepth = (
     // Array to store all updated nodes and edges
     let allUpdatedNodes: Node[] = [];
     let allUpdatedEdges: Edge[] = [];
-    
+
     // Collect all parent IDs by depth (deepest first)
     const nodesByDepth: Map<number, string[]> = new Map();
     let maxDepth = 0;
-    
+
     // Function to collect nodes by depth
     const collectNodesByDepth = (nodes: TreeNode[], depth: number) => {
         if (depth > maxDepth) maxDepth = depth;
-        
+
         for (const node of nodes) {
             if (!nodesByDepth.has(depth)) {
                 nodesByDepth.set(depth, []);
             }
             nodesByDepth.get(depth)!.push(node.id);
-            
+
             if (node.children.length > 0) {
                 collectNodesByDepth(node.children, depth + 1);
             }
         }
     };
-    
+
     // Build depth-ordered collection of nodes
     collectNodesByDepth(parentTree, 0);
-    
+
     // Process from deepest to shallowest
     for (let depth = maxDepth; depth >= 0; depth--) {
         const parentIds = nodesByDepth.get(depth) || [];
-        
+
         for (const parentId of parentIds) {
             const { updatedNodes, updatedEdges } = layoutSingleContainer(
                 parentId,
@@ -263,13 +263,13 @@ export const organizeLayoutByTreeDepth = (
                 defaultNodeHeight,
                 LayoutAlgorithm
             );
-            
+
             // Merge with already processed nodes and edges
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
             allUpdatedEdges = [...updatedEdges, ...allUpdatedEdges];
         }
     }
-    
+
     // Finally, process "no-parent" to handle root-level elements
     const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = layoutSingleContainer(
         "no-parent",
@@ -284,11 +284,11 @@ export const organizeLayoutByTreeDepth = (
         defaultNodeHeight,
         LayoutAlgorithm
     );
-    
+
     // Merge with already processed nodes and edges
-    allUpdatedNodes = [...rootUpdatedNodes,...allUpdatedNodes];
-    allUpdatedEdges = [...rootUpdatedEdges,...allUpdatedEdges];
-    
+    allUpdatedNodes = [...rootUpdatedNodes, ...allUpdatedNodes];
+    allUpdatedEdges = [...rootUpdatedEdges, ...allUpdatedEdges];
+
     return {
         updatedNodes: allUpdatedNodes,
         updatedEdges: allUpdatedEdges,
