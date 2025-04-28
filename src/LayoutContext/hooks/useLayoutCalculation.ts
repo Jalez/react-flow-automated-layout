@@ -22,6 +22,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
  * @param layerSpacing Spacing between layers
  * @param nodeWidth Width of nodes
  * @param nodeHeight Height of nodes
+ * @param layoutHidden Whether to include hidden nodes in the layout
  * @returns Object containing updated nodes and edges
  */
 const processSelectedNodes = (
@@ -35,7 +36,8 @@ const processSelectedNodes = (
   nodeSpacing: number,
   layerSpacing: number,
   nodeWidth: number,
-  nodeHeight: number
+  nodeHeight: number,
+  layoutHidden: boolean = false
 ): { nodes: Node[], edges: Edge[] } => {
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
@@ -64,7 +66,9 @@ const processSelectedNodes = (
       nodeSpacing,
       layerSpacing,
       nodeWidth,
-      nodeHeight
+      nodeHeight,
+      undefined,
+      layoutHidden
     );
     
     // Add updated nodes to map (this automatically handles duplicates)
@@ -162,7 +166,8 @@ export const useLayoutCalculation = (
         nodeSpacing,
         layerSpacing,
         nodeWidth,
-        nodeHeight
+        nodeHeight,
+        layoutHidden
       );
       
       updatedNodes = result.nodes;
@@ -180,7 +185,9 @@ export const useLayoutCalculation = (
         nodeSpacing,
         layerSpacing,
         nodeWidth,
-        nodeHeight
+        nodeHeight,
+        undefined,
+        layoutHidden
       );
 
       updatedNodes = result.updatedNodes;

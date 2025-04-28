@@ -29,6 +29,7 @@ const MARGIN = 10;
  * @param layerSpacing - Spacing between layers (vertical between ranks)
  * @param defaultNodeWidth - Default width for nodes without explicit width
  * @param defaultNodeHeight - Default height for nodes without explicit height
+ * @param includeHidden - Whether to include hidden nodes in the layout
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const organizeLayoutRecursively = (
@@ -42,7 +43,8 @@ export const organizeLayoutRecursively = (
     layerSpacing: number = 50,
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
-    LayoutAlgorithm = calculateLayoutWithDagre
+    LayoutAlgorithm = calculateLayoutWithDagre,
+    includeHidden: boolean = false
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
 
     const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
@@ -57,7 +59,8 @@ export const organizeLayoutRecursively = (
             layerSpacing,
             defaultNodeWidth,
             defaultNodeHeight,
-            LayoutAlgorithm
+            LayoutAlgorithm,
+            includeHidden
         );
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
@@ -76,7 +79,8 @@ export const organizeLayoutRecursively = (
         layerSpacing,
         defaultNodeWidth,
         defaultNodeHeight,
-        LayoutAlgorithm
+        LayoutAlgorithm,
+        includeHidden
     );
 
     return {
@@ -103,6 +107,7 @@ export const organizeLayoutRecursively = (
  * @param defaultNodeWidth - Default width for nodes without explicit width
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
+ * @param includeHidden - Whether to include hidden nodes in the layout
  * @returns { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }
  */
 export const layoutSingleContainer = (
@@ -116,7 +121,8 @@ export const layoutSingleContainer = (
     layerSpacing: number = 50,
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
-    LayoutAlgorithm = calculateLayoutWithDagre
+    LayoutAlgorithm = calculateLayoutWithDagre,
+    includeHidden: boolean = false
 ): { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node } => {
     // Get the set of child IDs for this parent
     const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
@@ -151,7 +157,8 @@ export const layoutSingleContainer = (
             nodeSpacing,
             layerSpacing,
             defaultNodeWidth,
-            defaultNodeHeight
+            defaultNodeHeight,
+            includeHidden
         );
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
@@ -203,6 +210,7 @@ export const fixParentNodeDimensions = (
  * @param defaultNodeWidth - Default width for nodes without explicit width
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
+ * @param includeHidden - Whether to include hidden nodes in the layout
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const organizeLayoutByTreeDepth = (
@@ -216,7 +224,8 @@ export const organizeLayoutByTreeDepth = (
     layerSpacing: number = 50,
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
-    LayoutAlgorithm = calculateLayoutWithDagre
+    LayoutAlgorithm = calculateLayoutWithDagre,
+    includeHidden: boolean = false
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     // Array to store all updated nodes and edges
     let allUpdatedNodes: Node[] = [];
@@ -261,7 +270,8 @@ export const organizeLayoutByTreeDepth = (
                 layerSpacing,
                 defaultNodeWidth,
                 defaultNodeHeight,
-                LayoutAlgorithm
+                LayoutAlgorithm,
+                includeHidden
             );
 
             // Merge with already processed nodes and edges
@@ -282,7 +292,8 @@ export const organizeLayoutByTreeDepth = (
         layerSpacing,
         defaultNodeWidth,
         defaultNodeHeight,
-        LayoutAlgorithm
+        LayoutAlgorithm,
+        includeHidden
     );
 
     // Merge with already processed nodes and edges
