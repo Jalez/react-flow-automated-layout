@@ -38,8 +38,17 @@ export const calculateLayoutWithDagre = (
   });
 
   //Remove nodes that are hidden
+  const visibleNodes = nodes.filter((node: Node) => JSON.stringify(node.hidden) !== JSON.stringify(true));
+  if(visibleNodes.length === 0) {
+    return {
+      nodes: [],
+      edges: [],
+      width: 0,
+      height: 0,
+    };
+  }
 
-  nodes.forEach((node: Node) => {
+  visibleNodes.forEach((node: Node) => {
     // Use actual node dimensions from style or fall back to configurable defaults
     const width = Number(node.style?.width) || defaultNodeWidth;
     const height = Number(node.style?.height) || defaultNodeHeight;
@@ -58,7 +67,7 @@ export const calculateLayoutWithDagre = (
   const sourcePosition = getSourcePosition(convertDirectionToLayout(direction));
   const targetPosition = getTargetPosition(convertDirectionToLayout(direction));
 
-  const newNodes = nodes.map((node: Node) => {
+  const newNodes = visibleNodes.map((node: Node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
     // Get dimensions used by Dagre for this node
     const { width: dagreWidth, height: dagreHeight } = nodeWithPosition;
