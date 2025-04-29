@@ -7,12 +7,14 @@ import { Node } from "@xyflow/react";
  * @param selectedNodeIds Array of node IDs that were selected
  * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
  * @param nodeIdWithNode Map of node IDs to nodes
+ * @param noParentKey Key used to represent nodes without a parent
  * @returns Array of filtered parent node IDs that should be processed
  */
 const filterSelectedParentNodes = (
   selectedNodes: Node[],
   nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
-  nodeIdWithNode: Map<string, Node>
+  nodeIdWithNode: Map<string, Node>,
+  noParentKey: string = 'no-parent'
 ): string[] => {
   // Step 1: Include parents of selected nodes to ensure they are processed
   const selectedNodeIds = selectedNodes.map(node => node.id);
@@ -37,7 +39,7 @@ const filterSelectedParentNodes = (
   
   
   if (filteredParentIds.length === 0) {
-    return ["no-parent"];
+    return [noParentKey]; // Use the customizable noParentKey
   }
   
   return filteredParentIds;

@@ -17,11 +17,13 @@ export interface TreeNode {
  * 
  * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
  * @param nodeIdWithNode Map of node IDs to node objects
+ * @param noParentKey Key used to represent nodes without a parent
  * @returns An array of TreeNode objects representing root parent nodes, each containing its hierarchy
  */
 export const buildNodeTree = (
   nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
-  nodeIdWithNode: Map<string, Node>
+  nodeIdWithNode: Map<string, Node>,
+  noParentKey: string = 'no-parent'
 ): TreeNode[] => {
   // Track processed nodes to avoid circular references
   const processedNodes = new Set<string>();
@@ -82,7 +84,7 @@ export const buildNodeTree = (
     if (node) {
       // If node has no parent, or parent doesn't exist in our node map, it's a root
       const parentId = node.parentId;
-      if (!parentId) {
+      if (!parentId || parentId === noParentKey) {
         const rootTreeNode = buildTreeRecursively(id, 0);
         if (rootTreeNode) {
           rootNodes.push(rootTreeNode);
