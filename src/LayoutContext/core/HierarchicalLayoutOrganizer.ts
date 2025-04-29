@@ -30,6 +30,7 @@ const MARGIN = 10;
  * @param defaultNodeWidth - Default width for nodes without explicit width
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param includeHidden - Whether to include hidden nodes in the layout
+ * @param noParentKey - Key used to represent nodes without a parent
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const organizeLayoutRecursively = (
@@ -44,7 +45,8 @@ export const organizeLayoutRecursively = (
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre,
-    includeHidden: boolean = false
+    includeHidden: boolean = false,
+    noParentKey: string = 'no-parent'
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
 
     const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
@@ -69,7 +71,7 @@ export const organizeLayoutRecursively = (
     }
 
     const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = organizeLayoutRecursively(
-        parentNode.parentId || "no-parent",
+        parentNode.parentId || noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
@@ -80,7 +82,8 @@ export const organizeLayoutRecursively = (
         defaultNodeWidth,
         defaultNodeHeight,
         LayoutAlgorithm,
-        includeHidden
+        includeHidden,
+        noParentKey
     );
 
     return {
@@ -197,7 +200,7 @@ export const fixParentNodeDimensions = (
  * Processes parent nodes in order from deepest to shallowest, ensuring proper layout calculation.
  * This function traverses the parent tree and calls layoutSingleContainer for each parent,
  * starting with the deepest children and working up to the root node(s).
- * Finally processes the "no-parent" node to handle root-level elements.
+ * Finally processes the custom noParentKey node to handle root-level elements.
  * 
  * @param parentTree - The tree structure of parent nodes
  * @param direction - The direction of the layout
@@ -211,6 +214,7 @@ export const fixParentNodeDimensions = (
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
  * @param includeHidden - Whether to include hidden nodes in the layout
+ * @param noParentKey - Key used to represent nodes without a parent
  * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
  */
 export const organizeLayoutByTreeDepth = (
@@ -225,7 +229,8 @@ export const organizeLayoutByTreeDepth = (
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre,
-    includeHidden: boolean = false
+    includeHidden: boolean = false,
+    noParentKey: string = 'no-parent'
 ): { updatedNodes: Node[], updatedEdges: Edge[] } => {
     // Array to store all updated nodes and edges
     let allUpdatedNodes: Node[] = [];
@@ -280,9 +285,9 @@ export const organizeLayoutByTreeDepth = (
         }
     }
 
-    // Finally, process "no-parent" to handle root-level elements
+    // Finally, process noParentKey to handle root-level elements
     const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = layoutSingleContainer(
-        "no-parent",
+        noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
