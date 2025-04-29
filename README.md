@@ -19,6 +19,77 @@ A React library for automated layout of nested node graphs with parent-child rel
 - **Configurable Node Dimensions**: Set default dimensions for nodes that don't have explicit width/height
 - **Extensible Engine System**: Designed to support custom layout engines in future releases
 
+## Breaking Changes in 1.0.0
+
+Version 1.0.0 introduces several breaking changes that require updates to your code:
+
+### 1. Parent-Child Relationship Maps
+
+The most significant change is how parent-child relationships are managed:
+
+**Old API (v0.x):**
+```javascript
+// Map of parent IDs to arrays of child nodes
+const parentIdWithNodes = new Map<string, Node[]>();
+
+// Update on node changes
+nodes.forEach((node) => {
+  if (node.parentId) {
+    if (!parentIdWithNodes.has(node.parentId)) {
+      parentIdWithNodes.set(node.parentId, []);
+    }
+    parentIdWithNodes.get(node.parentId).push(node);
+  } else {
+    if(!parentIdWithNodes.has("no-parent")) {
+      parentIdWithNodes.set("no-parent", []);
+    }
+    parentIdWithNodes.get("no-parent").push(node);
+  }
+});
+```
+
+**New API (v1.0.0):**
+```javascript
+// Map of parent IDs to Sets of child IDs (more efficient lookup)
+const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
+const nodeIdWithNode = new Map<string, Node>();
+
+// Update on node changes
+nodes.forEach((node) => {
+  // Map for direct node lookup by ID
+  nodeIdWithNode.set(node.id, node);
+  
+  // Map parent ID to Set of child IDs
+  const parentId = node.parentId || "no-parent";
+  if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+    nodeParentIdMapWithChildIdSet.set(parentId, new Set());
+  }
+  nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
+});
+```
+
+### 2. LayoutProvider Props
+
+The LayoutProvider component props have changed accordingly:
+
+**Old API (v0.x):**
+```jsx
+<LayoutProvider
+  // ...other props
+  parentIdWithNodes={parentIdWithNodes}
+  nodeIdWithNode={nodeIdWithNode}
+>
+```
+
+**New API (v1.0.0):**
+```jsx
+<LayoutProvider
+  // ...other props
+  nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
+  nodeIdWithNode={nodeIdWithNode}
+>
+```
+
 ## Patch Updates
 
 ### 0.3.3 (2025-04-21)
@@ -61,35 +132,27 @@ function FlowDiagram() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   
   // Maps for parent-child relationships (required by LayoutProvider)
-  // Note: include a 'no-parent' key grouping all nodes without a parent when constructing this map
-  const [parentIdWithNodes, setParentIdWithNodes] = useState(new Map());
+  const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState(new Map());
   const [nodeIdWithNode, setNodeIdWithNode] = useState(new Map());
   
   // Update these maps whenever nodes change
   useEffect(() => {
-    const parentIdWithNodes = new Map();
+    const nodeParentIdMapWithChildIdSet = new Map();
     const nodeIdWithNode = new Map();
     
     nodes.forEach((node) => {
       // Store node by ID for quick lookup
       nodeIdWithNode.set(node.id, node);
       
-      // Group nodes by their parent ID
-      if (node.parentId) {
-        if (!parentIdWithNodes.has(node.parentId)) {
-          parentIdWithNodes.set(node.parentId, []);
-        }
-        parentIdWithNodes.get(node.parentId).push(node);
-      } else {
-        // Store top-level nodes in a special group
-        if(!parentIdWithNodes.has("no-parent")) {
-          parentIdWithNodes.set("no-parent", []);
-        }
-        parentIdWithNodes.get("no-parent").push(node);
+      // Map parent ID to Set of child IDs
+      const parentId = node.parentId || "no-parent";
+      if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
+        nodeParentIdMapWithChildIdSet.set(parentId, new Set());
       }
+      nodeParentIdMapWithChildIdSet.get(parentId).add(node.id);
     });
     
-    setParentIdWithNodes(parentIdWithNodes);
+    setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
     setNodeIdWithNode(nodeIdWithNode);
   }, [nodes]);
   
@@ -119,7 +182,7 @@ function FlowDiagram() {
         }}
         updateNodes={updateNodesHandler}
         updateEdges={updateEdgesHandler}
-        parentIdWithNodes={parentIdWithNodes}
+        nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
         nodeIdWithNode={nodeIdWithNode}
       >
         <ReactFlow
@@ -418,8 +481,9 @@ Shows how to build your own custom UI controls by accessing the layout context d
 | initialParentResizingOptions | object | See below | Options for parent container resizing |
 | updateNodes | (nodes: Node[]) => void | | Callback to update nodes |
 | updateEdges | (edges: Edge[]) => void | | Callback to update edges |
-| parentIdWithNodes | Map<string, Node[]> | | Map of parent IDs to child nodes. Must include a 'no-parent' key grouping top-level nodes without a parent. |
+| nodeParentIdMapWithChildIdSet | Map<string, Set<string>> | | Map of parent IDs to Sets of child IDs. Must include a key grouping top-level nodes without a parent. |
 | nodeIdWithNode | Map<string, Node> | | Map of node IDs to node objects |
+| noParentKey | string | 'no-parent' | Customizable key used to represent nodes without a parent in the nodeParentIdMapWithChildIdSet map |
 
 #### Default Parent Resizing Options
 
