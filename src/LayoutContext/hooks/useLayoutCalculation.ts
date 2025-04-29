@@ -23,6 +23,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
  * @param nodeWidth Width of nodes
  * @param nodeHeight Height of nodes
  * @param layoutHidden Whether to include hidden nodes in the layout
+ * @param noParentKey Key used to represent nodes without a parent
  * @returns Object containing updated nodes and edges
  */
 const processSelectedNodes = (
@@ -37,13 +38,15 @@ const processSelectedNodes = (
   layerSpacing: number,
   nodeWidth: number,
   nodeHeight: number,
-  layoutHidden: boolean = false
+  layoutHidden: boolean = false,
+  noParentKey: string = 'no-parent'
 ): { nodes: Node[], edges: Edge[] } => {
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
     selectedNodes,
     nodeParentIdMapWithChildIdSet,
-    nodeIdWithNode
+    nodeIdWithNode,
+    noParentKey
   );
   
   if (filteredParentIds.length === 0) {
@@ -108,7 +111,8 @@ export const useLayoutCalculation = (
   layerSpacing: number,
   nodeWidth: number = 172,
   nodeHeight: number = 36,
-  layoutHidden: boolean = false
+  layoutHidden: boolean = false,
+  noParentKey: string = 'no-parent' // New parameter with default for backward compatibility
 ) => {
   
   /**
@@ -167,14 +171,15 @@ export const useLayoutCalculation = (
         layerSpacing,
         nodeWidth,
         nodeHeight,
-        layoutHidden
+        layoutHidden,
+        noParentKey
       );
       
       updatedNodes = result.nodes;
       updatedEdges = result.edges;
     } else {
       // Use our helper function to process the entire tree in depth order
-      const nodeTree = buildNodeTree(nodeParentIdMapWithChildIdSet, nodeIdWithNode);
+      const nodeTree = buildNodeTree(nodeParentIdMapWithChildIdSet, nodeIdWithNode, noParentKey);
       const result = organizeLayoutByTreeDepth(
         nodeTree,
         dagreDirection,
@@ -187,7 +192,8 @@ export const useLayoutCalculation = (
         nodeWidth,
         nodeHeight,
         undefined,
-        layoutHidden
+        layoutHidden,
+        noParentKey
       );
 
       updatedNodes = result.updatedNodes;
