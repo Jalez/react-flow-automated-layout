@@ -131,6 +131,9 @@ function FlowDiagram() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   
+  // Define a custom key for parentless nodes
+  const rootLevelKey = "root-level";
+  
   // Maps for parent-child relationships (required by LayoutProvider)
   const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState(new Map());
   const [nodeIdWithNode, setNodeIdWithNode] = useState(new Map());
@@ -144,8 +147,8 @@ function FlowDiagram() {
       // Store node by ID for quick lookup
       nodeIdWithNode.set(node.id, node);
       
-      // Map parent ID to Set of child IDs
-      const parentId = node.parentId || "no-parent";
+      // Map parent ID to Set of child IDs, using our custom rootLevelKey for parentless nodes
+      const parentId = node.parentId || rootLevelKey; 
       if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
         nodeParentIdMapWithChildIdSet.set(parentId, new Set());
       }
@@ -184,6 +187,7 @@ function FlowDiagram() {
         updateEdges={updateEdgesHandler}
         nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
         nodeIdWithNode={nodeIdWithNode}
+        noParentKey={rootLevelKey} // Pass the same custom key for consistency
       >
         <ReactFlow
           nodes={nodes}
