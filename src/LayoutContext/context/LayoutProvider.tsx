@@ -33,6 +33,7 @@ interface LayoutProviderProps {
     updateEdges?: (edges: Edge[]) => void;
     nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
     nodeIdWithNode: Map<string, Node>;
+    noParentKey?: string; // New prop for customizing the key for parentless nodes
 }
 
 /**
@@ -54,6 +55,7 @@ export function LayoutProvider({
     updateEdges,
     nodeParentIdMapWithChildIdSet,
     nodeIdWithNode,
+    noParentKey = 'no-parent', // Default to 'no-parent' for backward compatibility
 }: LayoutProviderProps) {
     // Get ReactFlow instance
     const reactFlowInstance = useReactFlow();
@@ -136,7 +138,8 @@ export function LayoutProvider({
         layerSpacing,
         nodeWidth,
         nodeHeight,
-        layoutHidden
+        layoutHidden,
+        noParentKey // Pass the noParentKey to the hook
     );
 
     // Register a new layout engine
@@ -289,6 +292,7 @@ export function LayoutProvider({
         layoutEngineOptions,
         nodeParentIdMapWithChildIdSet,
         nodeIdWithNode,
+        noParentKey, // Add the noParentKey property
         updateNodes,
         updateEdges,
 

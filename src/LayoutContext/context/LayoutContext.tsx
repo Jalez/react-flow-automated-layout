@@ -50,6 +50,7 @@ export interface LayoutContextState {
   // Node relationship maps
   nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
   nodeIdWithNode: Map<string, Node>;
+  noParentKey: string; // Key used to represent nodes without a parent
   
   // Optional callbacks for updating nodes/edges
   updateNodes?: (nodes: Node[]) => void;
