@@ -26,7 +26,7 @@ import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
  * @param noParentKey Key used to represent nodes without a parent
  * @returns Object containing updated nodes and edges
  */
-const processSelectedNodes = (
+export const processSelectedNodes = (
   selectedNodes: Node[],
   dagreDirection: string,
   nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
