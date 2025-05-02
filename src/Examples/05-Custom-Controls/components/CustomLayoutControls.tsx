@@ -27,7 +27,6 @@ const styles = {
   },
   directionButton: {
     padding: '6px 10px',
-    border: '1px solid #ddd',
     background: '#f5f5f5',
     borderRadius: '4px',
     cursor: 'pointer',

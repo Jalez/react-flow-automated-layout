@@ -43,8 +43,6 @@ const BasicFlowLayout = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [childNodesInitialized, setChildNodesInitialized] = useState(false);
-    const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
-    const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
 
     // Handle edge connections
     const onConnect = useCallback(
@@ -74,24 +72,7 @@ const BasicFlowLayout = () => {
         const updatedNodes = createChildNodesToNode(nodes, parentNode);
         const allNodes = [parentNodesParent, parentNodesSibling, parentNode, ...updatedNodes] as any[];
         setNodes(allNodes);
-        
-        // Create parent-child relationship maps using the new Set-based structure
-        const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
-        const nodeIdWithNode = new Map<string, Node>();
-        
-        allNodes.forEach((node) => {
-            // Add to node lookup map
-            nodeIdWithNode.set(node.id, node);
-            
-            // Add to appropriate parent's children set
-            const parentId = node.parentId || "no-parent";
-            if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
-                nodeParentIdMapWithChildIdSet.set(parentId, new Set());
-            }
-            nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
-        });        
-        setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
-        setNodeIdWithNode(nodeIdWithNode);
+
         setChildNodesInitialized(true);
     }, []);
 
@@ -100,22 +81,8 @@ const BasicFlowLayout = () => {
         <>
             {childNodesInitialized && (
                 <LayoutProvider
-                    initialDirection="DOWN"
-                    initialAutoLayout={true}
-                    initialPadding={50}
-                    initialSpacing={{ node: 50, layer: 50 }}
-                    initialParentResizingOptions={{
-                        padding: {
-                            horizontal: 50,
-                            vertical: 40,
-                        },
-                        minWidth: 150,
-                        minHeight: 150,
-                    }}
                     updateNodes={updateNodesHandler}
                     updateEdges={updateEdgesHandler}
-                    nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
-                    nodeIdWithNode={nodeIdWithNode}
                 >
                     <ReactFlow
                         nodes={nodes}

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
     Background,
     ReactFlow,
@@ -55,40 +55,7 @@ const AddNodeOnEdgeDrop = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const { screenToFlowPosition } = useReactFlow();
-    const [childNodesInitialized, setChildNodesInitialized] = useState(false);
-    const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
-    const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
 
-    // Initialize the parent-child relationships
-    useEffect(() => {
-        // Initialize parent-child relationship maps
-        const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
-        const nodeIdWithNode = new Map<string, Node>();
-        
-        nodes.forEach((node) => {
-            // Add to node lookup map
-            nodeIdWithNode.set(node.id, node);
-            
-            // Add to parent-child relationship map
-            const parentId = node.parentId || "no-parent";
-            if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
-                nodeParentIdMapWithChildIdSet.set(parentId, new Set());
-            }
-            nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
-        });
-        
-        // Add each parent node type to the relationship map
-        ['input', 'output', 'default'].forEach((type) => {
-            if (!nodeParentIdMapWithChildIdSet.has(type)) {
-                nodeParentIdMapWithChildIdSet.set(type, new Set());
-            }
-        });
-        
-        setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
-        setNodeIdWithNode(nodeIdWithNode);
-        
-        setChildNodesInitialized(true);
-    }, [nodes]);
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -127,36 +94,11 @@ const AddNodeOnEdgeDrop = () => {
         [screenToFlowPosition, setNodes, setEdges],
     );
 
-    const updateNodesHandler = useCallback((newNodes: Node[]) => {
-        setNodes(newNodes);
-    }, [setNodes]);
-
-    const updateEdgesHandler = useCallback((newEdges: Edge[]) => {
-        setEdges(newEdges);
-    }, [setEdges]);
-
-    if (!childNodesInitialized) {
+    if (!nodes.length) {
         return <div>Loading...</div>;
     }
     return (
-        <LayoutProvider
-            initialDirection="DOWN"
-            initialAutoLayout={true}
-            initialPadding={50}
-            initialSpacing={{ node: 50, layer: 50 }}
-            initialParentResizingOptions={{
-                padding: {
-                    horizontal: 50,
-                    vertical: 40,
-                },
-                minWidth: 150,
-                minHeight: 150,
-            }}
-            updateNodes={updateNodesHandler}
-            updateEdges={updateEdgesHandler}
-            nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
-            nodeIdWithNode={nodeIdWithNode}
-        >
+        <LayoutProvider>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
