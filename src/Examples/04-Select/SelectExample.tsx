@@ -96,7 +96,7 @@ const SelectFlowLayout = () => {
         setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
         setNodeIdWithNode(nodeIdWithNode);
         setChildNodesInitialized(true);
-    }, [nodes]);
+    }, []); // Remove nodes dependency to prevent infinite loop
 
     // Render the ReactFlow component with our LayoutProvider
     return (
