@@ -9,7 +9,7 @@ import LayoutContext, {
     useLayoutContext
 } from './LayoutContext';
 import { engines } from '../engines';
-import { DEFAULT_PARENT_RESIZING_OPTIONS } from '../utils/layoutProviderUtils';
+import { DEFAULT_PARENT_RESIZING_OPTIONS, filterVisibleNodesAndEdges } from '../utils/layoutProviderUtils';
 import { useLayoutCalculation } from '../hooks/useLayoutCalculation';
 
 interface LayoutProviderProps {
@@ -31,9 +31,9 @@ interface LayoutProviderProps {
     layoutEngines?: Record<string, LayoutEngine>;
     updateNodes?: (nodes: Node[]) => void;
     updateEdges?: (edges: Edge[]) => void;
-    nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
-    nodeIdWithNode: Map<string, Node>;
-    noParentKey?: string; // New prop for customizing the key for parentless nodes
+    nodeParentIdMapWithChildIdSet?: Map<string, Set<string>>; // Now optional
+    nodeIdWithNode?: Map<string, Node>; // Now optional
+    noParentKey?: string; // Key for customizing the key for parentless nodes
 }
 
 /**
@@ -46,15 +46,15 @@ export function LayoutProvider({
     initialAlgorithm = 'layered',
     initialAutoLayout = true,
     initialPadding = 50,
-    initialSpacing = { node: 150, layer: 180 },
+    initialSpacing = { node: 50, layer: 50 },
     initialNodeDimensions = { width: 172, height: 36 },
     initialParentResizingOptions,
     includeHidden = false,
     layoutEngines: customEngines,
     updateNodes,
     updateEdges,
-    nodeParentIdMapWithChildIdSet,
-    nodeIdWithNode,
+    nodeParentIdMapWithChildIdSet: externalNodeParentIdMapWithChildIdSet,
+    nodeIdWithNode: externalNodeIdWithNode,
     noParentKey = 'no-parent', // Default to 'no-parent' for backward compatibility
 }: LayoutProviderProps) {
     // Get ReactFlow instance
@@ -62,6 +62,43 @@ export function LayoutProvider({
     // Use useNodes and useEdges hooks to get live data
     const nodes = useNodes();
     const edges = useEdges();
+
+    // Internal state for relationship maps when not provided externally
+    const [internalNodeIdWithNode, setInternalNodeIdWithNode] = useState<Map<string, Node>>(new Map());
+    const [internalNodeParentIdMapWithChildIdSet, setInternalNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
+    
+    // Use provided maps or internal state
+    const nodeIdWithNode = externalNodeIdWithNode || internalNodeIdWithNode;
+    const nodeParentIdMapWithChildIdSet = externalNodeParentIdMapWithChildIdSet || internalNodeParentIdMapWithChildIdSet;
+    
+    // Build internal maps if external maps aren't provided
+    useEffect(() => {
+        // Only build internal maps if external ones aren't provided
+        if (!externalNodeIdWithNode || !externalNodeParentIdMapWithChildIdSet) {
+            const newNodeIdWithNode = new Map<string, Node>();
+            const newNodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
+            
+            nodes.forEach((node) => {
+                // Add to node lookup map
+                newNodeIdWithNode.set(node.id, node);
+                
+                // Add to appropriate parent's children set
+                const parentId = node.parentId || noParentKey;
+                if (!newNodeParentIdMapWithChildIdSet.has(parentId)) {
+                    newNodeParentIdMapWithChildIdSet.set(parentId, new Set());
+                }
+                newNodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
+            });
+            
+            if (!externalNodeIdWithNode) {
+                setInternalNodeIdWithNode(newNodeIdWithNode);
+            }
+            
+            if (!externalNodeParentIdMapWithChildIdSet) {
+                setInternalNodeParentIdMapWithChildIdSet(newNodeParentIdMapWithChildIdSet);
+            }
+        }
+    }, [nodes, externalNodeIdWithNode, externalNodeParentIdMapWithChildIdSet, noParentKey]);
 
     const numberOfNodes = nodeIdWithNode.size;
     // State for layout settings
@@ -167,25 +204,21 @@ export function LayoutProvider({
         inputNodes: Node[] = [],
         inputEdges: Edge[] = []
     ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
-        // Return early if already applying layout to prevent recursion
         if (layoutInProgress || applyingLayoutRef.current) {
             return { nodes: inputNodes, edges: inputEdges };
         }
-
         // Use the reactive nodes and edges from hooks instead of getNodes/getEdges
         const nodesData = inputNodes.length > 0 ? inputNodes : nodes;
         const edgesData = inputEdges.length > 0 ? inputEdges : edges;
-
         if (nodesData.length === 0) {
             return { nodes: nodesData, edges: edgesData };
         }
-
+        // Use the new utility for filtering visible nodes/edges
+        const { nodes: filteredNodes, edges: filteredEdges } = filterVisibleNodesAndEdges(nodesData, edgesData, layoutHidden);
         try {
             setLayoutInProgress(true);
             applyingLayoutRef.current = true;
-
-            const result = await calculateLayout(nodesData, edgesData, selectedNodes);
-
+            const result = await calculateLayout(filteredNodes, filteredEdges, selectedNodes);
             // Update nodes and edges
             if (updateNodes) {
                 updateNodes(result.nodes);

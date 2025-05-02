@@ -40,7 +40,26 @@ vi.mock('../../utils/filterSelectedParentNodes', () => ({
 }));
 
 // Import the function under test, not the hook directly
-import { processSelectedNodes } from '../../hooks/useLayoutCalculation';
+import { processSelectedNodes, LayoutConfig } from '../../hooks/useLayoutCalculation';
+
+// Helper to create a default LayoutConfig for tests
+function createLayoutConfig(overrides: Partial<LayoutConfig> = {}): LayoutConfig {
+  return {
+    dagreDirection: 'TB',
+    nodeParentIdMapWithChildIdSet: new Map(),
+    nodeIdWithNode: new Map(),
+    nodes: [],
+    edges: [],
+    margin: 10,
+    nodeSpacing: 50,
+    layerSpacing: 50,
+    nodeWidth: 172,
+    nodeHeight: 36,
+    layoutHidden: false,
+    noParentKey: 'no-parent',
+    ...overrides,
+  };
+}
 
 describe('useLayoutCalculation', () => {
   // Test setup with common variables
@@ -80,13 +99,22 @@ describe('useLayoutCalculation', () => {
   // we'll test the internal processSelectedNodes function which contains
   // most of the hook's logic
   describe('processSelectedNodes', () => {
+    let setup: ReturnType<typeof createTestSetup>;
+    let defaultConfig: LayoutConfig;
+
+    beforeEach(() => {
+      setup = createTestSetup();
+      defaultConfig = createLayoutConfig({
+        nodeParentIdMapWithChildIdSet: setup.nodeParentIdMapWithChildIdSet,
+        nodeIdWithNode: setup.nodeIdWithNode,
+        nodes: setup.nodes,
+        edges: setup.edges,
+      });
+      vi.clearAllMocks();
+    });
+
     it('should process selected nodes by finding parent containers', () => {
-      const setup = createTestSetup();
-      
-      // Set up mock return value for this test only
       vi.mocked(filterSelectedParentNodes).mockReturnValue(['parent']);
-      
-      // Mock organizeLayoutRecursively to return updated nodes and edges
       vi.mocked(HierarchicalLayoutOrganizer.organizeLayoutRecursively).mockReturnValueOnce({
         updatedNodes: [
           { ...setup.nodes[0], position: { x: 100, y: 100 } },
@@ -94,32 +122,14 @@ describe('useLayoutCalculation', () => {
         ],
         updatedEdges: setup.edges
       });
-      
-      const selectedNodes: Node[] = [setup.nodes[0]]; // Select node1
-      
-      const result = processSelectedNodes(
-        selectedNodes,
-        'TB', // Direction
-        setup.nodeParentIdMapWithChildIdSet,
-        setup.nodeIdWithNode,
-        setup.nodes,
-        setup.edges,
-        10, // Margin
-        50, // Node spacing
-        50, // Layer spacing
-        172, // Node width
-        36 // Node height
-      );
-      
-      // filterSelectedParentNodes should have been called with the selected nodes
+      const selectedNodes: Node[] = [setup.nodes[0]];
+      const result = processSelectedNodes(selectedNodes, defaultConfig);
       expect(filterSelectedParentNodes).toHaveBeenCalledWith(
         selectedNodes,
         setup.nodeParentIdMapWithChildIdSet,
         setup.nodeIdWithNode,
         'no-parent'
       );
-      
-      // organizeLayoutRecursively should have been called
       expect(HierarchicalLayoutOrganizer.organizeLayoutRecursively).toHaveBeenCalledWith(
         'parent',
         'TB',
@@ -134,66 +144,24 @@ describe('useLayoutCalculation', () => {
         undefined,
         false
       );
-      
-      // Result should contain the updated nodes and edges
       expect(result.nodes.length).toBe(setup.nodes.length);
       expect(result.edges.length).toBe(setup.edges.length);
     });
-    
+
     it('should return original nodes and edges when no parent nodes are selected', () => {
-      const setup = createTestSetup();
-      
-      // Mock filterSelectedParentNodes to return an empty array for this test only
       vi.mocked(filterSelectedParentNodes).mockReturnValue([]);
-      
-      const selectedNodes: Node[] = [setup.nodes[0]]; // Select node1
-      
-      const result = processSelectedNodes(
-        selectedNodes,
-        'TB', // Direction
-        setup.nodeParentIdMapWithChildIdSet,
-        setup.nodeIdWithNode,
-        setup.nodes,
-        setup.edges,
-        10, // Margin
-        50, // Node spacing
-        50, // Layer spacing
-        172, // Node width
-        36 // Node height
-      );
-      
-      // Since no parent nodes were selected, the original nodes and edges should be returned
+      const selectedNodes: Node[] = [setup.nodes[0]];
+      const result = processSelectedNodes(selectedNodes, defaultConfig);
       expect(result.nodes).toEqual(setup.nodes);
       expect(result.edges).toEqual(setup.edges);
-      
-      // organizeLayoutRecursively should not have been called
       expect(HierarchicalLayoutOrganizer.organizeLayoutRecursively).not.toHaveBeenCalled();
     });
-    
+
     it('should respect the layoutHidden flag', () => {
-      const setup = createTestSetup();
-      
-      // Mock filterSelectedParentNodes to return parent node for this test only
       vi.mocked(filterSelectedParentNodes).mockReturnValue(['parent']);
-      
-      const selectedNodes: Node[] = [setup.nodes[0]]; // Select node1
-      
-      processSelectedNodes(
-        selectedNodes,
-        'TB', // Direction
-        setup.nodeParentIdMapWithChildIdSet,
-        setup.nodeIdWithNode,
-        setup.nodes,
-        setup.edges,
-        10, // Margin
-        50, // Node spacing
-        50, // Layer spacing
-        172, // Node width
-        36, // Node height
-        true // layoutHidden = true
-      );
-      
-      // organizeLayoutRecursively should have been called with layoutHidden = true
+      const selectedNodes: Node[] = [setup.nodes[0]];
+      const config = { ...defaultConfig, layoutHidden: true };
+      processSelectedNodes(selectedNodes, config);
       expect(HierarchicalLayoutOrganizer.organizeLayoutRecursively).toHaveBeenCalledWith(
         'parent',
         'TB',
@@ -209,38 +177,17 @@ describe('useLayoutCalculation', () => {
         true
       );
     });
-    
+
     it('should use custom noParentKey when provided', () => {
-      const setup = createTestSetup();
-      
-      // Mock filterSelectedParentNodes for this test only
       vi.mocked(filterSelectedParentNodes).mockReturnValue(['parent']);
-      
-      const selectedNodes: Node[] = [setup.nodes[0]]; // Select node1
-      const customNoParentKey = 'root-level';
-      
-      processSelectedNodes(
-        selectedNodes,
-        'TB', // Direction
-        setup.nodeParentIdMapWithChildIdSet,
-        setup.nodeIdWithNode,
-        setup.nodes,
-        setup.edges,
-        10, // Margin
-        50, // Node spacing
-        50, // Layer spacing
-        172, // Node width
-        36, // Node height
-        false, // layoutHidden
-        customNoParentKey
-      );
-      
-      // filterSelectedParentNodes should have been called with the custom noParentKey
+      const selectedNodes: Node[] = [setup.nodes[0]];
+      const config = { ...defaultConfig, noParentKey: 'root-level' };
+      processSelectedNodes(selectedNodes, config);
       expect(filterSelectedParentNodes).toHaveBeenCalledWith(
         selectedNodes,
         setup.nodeParentIdMapWithChildIdSet,
         setup.nodeIdWithNode,
-        customNoParentKey
+        'root-level'
       );
     });
   });

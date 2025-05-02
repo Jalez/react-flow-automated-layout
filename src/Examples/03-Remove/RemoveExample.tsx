@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   ReactFlow,
   Background,
@@ -13,13 +13,13 @@ import {
   Connection,
   Controls,
 } from '@xyflow/react';
- 
+
 import '@xyflow/react/dist/style.css';
-import { 
-  LayoutProvider, 
-  LayoutControls, 
+import {
+  LayoutProvider,
+  LayoutControls,
 } from '../../LayoutContext';
- 
+
 // Define the node data type to satisfy Record<string, unknown>
 interface NodeData extends Record<string, unknown> {
   label?: string;
@@ -47,59 +47,23 @@ const initialNodes: Node<NodeData>[] = [
     position: { x: 0, y: 300 },
   },
 ];
- 
+
 const initialEdges: Edge[] = [
   { id: '1->3', source: '1', target: '3' },
   { id: '2->3', source: '2', target: '3' },
   { id: '3->4', source: '3', target: '4' },
   { id: '4->5', source: '4', target: '5' },
 ];
- 
+
 export default function RemoveFlow() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, _, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [nodeParentIdMapWithChildIdSet, setNodeParentIdMapWithChildIdSet] = useState<Map<string, Set<string>>>(new Map());
-  const [nodeIdWithNode, setNodeIdWithNode] = useState<Map<string, Node>>(new Map());
- 
+
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [],
   );
 
-  // Initialize node data
-  useEffect(() => {
-    // Initialize parent-child relationship maps
-    const nodeParentIdMapWithChildIdSet = new Map<string, Set<string>>();
-    const nodeIdWithNode = new Map<string, Node>();
-    
-    nodes.forEach((node) => {
-      // Add to node lookup map
-      nodeIdWithNode.set(node.id, node);
-      
-      // Add to parent-child relationship map
-      const parentId = node.parentId || "no-parent";
-      if (!nodeParentIdMapWithChildIdSet.has(parentId)) {
-        nodeParentIdMapWithChildIdSet.set(parentId, new Set());
-      }
-      nodeParentIdMapWithChildIdSet.get(parentId)?.add(node.id);
-    });
-    
-    setNodeParentIdMapWithChildIdSet(nodeParentIdMapWithChildIdSet);
-    setNodeIdWithNode(nodeIdWithNode);
-    
-    setIsInitialized(true);
-  }, [nodes]);
-
-  // Update nodes handler that matches what LayoutProvider expects
-  const updateNodesHandler = useCallback((newNodes: Node[]) => {
-    setNodes(newNodes);
-  }, [setNodes]);
-
-  // Update edges handler with correct type signature expected by LayoutProvider
-  const updateEdgesHandler = useCallback((newEdges: Edge[]) => {
-    setEdges(newEdges);
-  }, [setEdges]);
 
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
@@ -108,11 +72,11 @@ export default function RemoveFlow() {
           const incomers = getIncomers(node, nodes, edges);
           const outgoers = getOutgoers(node, nodes, edges);
           const connectedEdges = getConnectedEdges([node], edges);
- 
+
           const remainingEdges = acc.filter(
             (edge) => !connectedEdges.includes(edge),
           );
- 
+
           const createdEdges = incomers.flatMap(({ id: source }) =>
             outgoers.map(({ id: target }) => ({
               id: `${source}->${target}`,
@@ -120,35 +84,18 @@ export default function RemoveFlow() {
               target,
             })),
           );
- 
+
           return [...remainingEdges, ...createdEdges];
         }, edges),
       );
     },
     [nodes, edges],
   );
- 
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      {isInitialized && (
-        <LayoutProvider
-          initialDirection="DOWN"
-          initialAutoLayout={true}
-          initialPadding={50}
-          initialSpacing={{ node: 50, layer: 50 }}
-          initialParentResizingOptions={{
-            padding: {
-              horizontal: 50,
-              vertical: 40,
-            },
-            minWidth: 150,
-            minHeight: 150,
-          }}
-          updateNodes={updateNodesHandler}
-          updateEdges={updateEdgesHandler}
-          nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
-          nodeIdWithNode={nodeIdWithNode}
-        >
+      {nodes.length && (
+        <LayoutProvider>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -157,18 +104,17 @@ export default function RemoveFlow() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             fitView
-            style={{ backgroundColor: "#F7F9FB" }}
           >
             <Background />
             <Controls position="top-right">
 
-            <LayoutControls 
-              showDirectionControls={true}
-              showAutoLayoutToggle={true}
-              showSpacingControls={true}
-              showApplyLayoutButton={true}
+              <LayoutControls
+                showDirectionControls={true}
+                showAutoLayoutToggle={true}
+                showSpacingControls={true}
+                showApplyLayoutButton={true}
               />
-              </Controls>
+            </Controls>
           </ReactFlow>
         </LayoutProvider>
       )}

@@ -103,25 +103,13 @@ const SelectFlowLayout = () => {
         <div style={{ width: '100%', height: '100%' }}>
             {childNodesInitialized && (
                 <LayoutProvider
-                    initialDirection="DOWN"
-                    initialAutoLayout={false}
-                    initialPadding={50}
-                    initialSpacing={{ node: 50, layer: 50 }}
-                    initialParentResizingOptions={{
-                        padding: {
-                            horizontal: 50,
-                            vertical: 40,
-                        },
-                        minWidth: 150,
-                        minHeight: 150,
-                    }}
+                    initialAutoLayout={false} // You need to now manually trigger the layout
                     updateNodes={updateNodesHandler}
                     updateEdges={updateEdgesHandler}
                     nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
                     nodeIdWithNode={nodeIdWithNode}
                 >
                     <ReactFlow
-
                         nodes={nodes}
                         edges={edges}
                         onNodesChange={onNodesChange}
@@ -131,8 +119,8 @@ const SelectFlowLayout = () => {
                         fitView
                     >
                         <Panel position="top-left">
-                            <SelectionDisplay 
-                             />
+                            <SelectionDisplay
+                            />
                         </Panel>
                         <Controls position="top-right">
                             <LayoutControls
@@ -156,7 +144,7 @@ function SelectionDisplay() {
     const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
 
     // the passed handler has to be memoized, otherwise the hook will not work correctly
-    const onChange = useCallback(({ nodes }: { nodes: Node[];}) => {
+    const onChange = useCallback(({ nodes }: { nodes: Node[]; }) => {
         setSelectedNodes(nodes);
     }, []);
 
@@ -165,8 +153,8 @@ function SelectionDisplay() {
     });
 
     return (
-            <p>Ids of selected nodes: {selectedNodes.map((node: Node) => node.id).join(', ')}</p>
-        
+        <p>Ids of selected nodes: {selectedNodes.map((node: Node) => node.id).join(', ')}</p>
+
     );
 }
 

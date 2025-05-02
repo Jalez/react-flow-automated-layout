@@ -1,4 +1,4 @@
-import { Node, Position } from '@xyflow/react';
+import { Edge, Node, Position } from '@xyflow/react';
 import { LayoutDirection } from '../context/LayoutContext';
 import { Direction } from '../core/HierarchicalLayoutOrganizer';
 
@@ -87,3 +87,24 @@ export const getTargetPosition = (direction: LayoutDirection): Position => {
         default: return Position.Top;
     }
 };
+
+/**
+ * Utility to filter visible nodes and edges based on the layoutHidden flag.
+ * If layoutHidden is false, only visible nodes/edges are included.
+ * If layoutHidden is true, all nodes/edges are included.
+ */
+export function filterVisibleNodesAndEdges(
+  nodes: Node[],
+  edges: Edge[],
+  layoutHidden: boolean
+): { nodes: Node[]; edges: Edge[] } {
+  if (layoutHidden) {
+    return { nodes, edges };
+  }
+  const visibleNodes = nodes.filter(node => !node.hidden);
+  const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
+  const visibleEdges = edges.filter(
+    edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+  );
+  return { nodes: visibleNodes, edges: visibleEdges };
+}
