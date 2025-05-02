@@ -6,41 +6,44 @@ import { organizeLayoutRecursively, organizeLayoutByTreeDepth } from '../core/Hi
 import { buildNodeTree } from '../utils/treeUtils';
 import filterSelectedParentNodes from '../utils/filterSelectedParentNodes';
 
-
+// Layout configuration object for simplification
+export interface LayoutConfig {
+  dagreDirection: string;
+  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>;
+  nodeIdWithNode: Map<string, Node>;
+  nodes: Node[];
+  edges: Edge[];
+  margin: number;
+  nodeSpacing: number;
+  layerSpacing: number;
+  nodeWidth: number;
+  nodeHeight: number;
+  layoutHidden?: boolean;
+  noParentKey?: string;
+}
 
 /**
- * Process selected node IDs for layout calculations
- * 
- * @param selectedNodeIds IDs of selected nodes to process for layout
- * @param dagreDirection Direction for layout algorithm
- * @param nodeParentIdMapWithChildIdSet Map of parent IDs to their set of child IDs
- * @param nodeIdWithNode Map of node IDs to nodes
- * @param nodes All nodes in the graph
- * @param edges All edges in the graph
- * @param margin Margin to use for layout
- * @param nodeSpacing Spacing between nodes
- * @param layerSpacing Spacing between layers
- * @param nodeWidth Width of nodes
- * @param nodeHeight Height of nodes
- * @param layoutHidden Whether to include hidden nodes in the layout
- * @param noParentKey Key used to represent nodes without a parent
- * @returns Object containing updated nodes and edges
+ * Process selected node IDs for layout calculations (refactored to use LayoutConfig)
  */
 export const processSelectedNodes = (
   selectedNodes: Node[],
-  dagreDirection: string,
-  nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
-  nodeIdWithNode: Map<string, Node>,
-  nodes: Node[],
-  edges: Edge[],
-  margin: number,
-  nodeSpacing: number,
-  layerSpacing: number,
-  nodeWidth: number,
-  nodeHeight: number,
-  layoutHidden: boolean = false,
-  noParentKey: string = 'no-parent'
+  config: LayoutConfig
 ): { nodes: Node[], edges: Edge[] } => {
+  const {
+    dagreDirection,
+    nodeParentIdMapWithChildIdSet,
+    nodeIdWithNode,
+    nodes,
+    edges,
+    margin,
+    nodeSpacing,
+    layerSpacing,
+    nodeWidth,
+    nodeHeight,
+    layoutHidden = false,
+    noParentKey = 'no-parent',
+  } = config;
+
   // Filter to only include relevant parent nodes
   const filteredParentIds = filterSelectedParentNodes(
     selectedNodes,
@@ -48,16 +51,12 @@ export const processSelectedNodes = (
     nodeIdWithNode,
     noParentKey
   );
-  
   if (filteredParentIds.length === 0) {
     return { nodes, edges };
   }
-  
   // Map to track updated nodes and edges (using node/edge ID as key for faster lookups)
   const updatedNodesMap = new Map<string, Node>();
   const updatedEdgesMap = new Map<string, Edge>();
-  
-  // Process each parent node
   for (const parentId of filteredParentIds) {
     const { updatedNodes, updatedEdges } = organizeLayoutRecursively(
       parentId,
@@ -73,27 +72,19 @@ export const processSelectedNodes = (
       undefined,
       layoutHidden
     );
-    
-    // Add updated nodes to map (this automatically handles duplicates)
     updatedNodes.forEach(node => {
       updatedNodesMap.set(node.id, node);
     });
-    
-    // Add updated edges to map
     updatedEdges.forEach(edge => {
       updatedEdgesMap.set(edge.id, edge);
     });
   }
-  
-  // Convert maps to arrays
-  const updatedNodes = nodes.map(node => 
+  const updatedNodes = nodes.map(node =>
     updatedNodesMap.has(node.id) ? updatedNodesMap.get(node.id)! : node
   );
-  
-  const updatedEdges = edges.map(edge => 
+  const updatedEdges = edges.map(edge =>
     updatedEdgesMap.has(edge.id) ? updatedEdgesMap.get(edge.id)! : edge
   );
-  
   return { nodes: updatedNodes, edges: updatedEdges };
 };
 
@@ -161,18 +152,20 @@ export const useLayoutCalculation = (
       
       const result = processSelectedNodes(
         filteredSelectedNodes,
-        dagreDirection,
-        nodeParentIdMapWithChildIdSet,
-        nodeIdWithNode,
-        filteredNodes,
-        filteredEdges,
-        margin,
-        nodeSpacing,
-        layerSpacing,
-        nodeWidth,
-        nodeHeight,
-        layoutHidden,
-        noParentKey
+        {
+          dagreDirection,
+          nodeParentIdMapWithChildIdSet,
+          nodeIdWithNode,
+          nodes: filteredNodes,
+          edges: filteredEdges,
+          margin,
+          nodeSpacing,
+          layerSpacing,
+          nodeWidth,
+          nodeHeight,
+          layoutHidden,
+          noParentKey
+        }
       );
       
       updatedNodes = result.nodes;
