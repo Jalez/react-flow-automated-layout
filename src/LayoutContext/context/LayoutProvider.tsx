@@ -78,10 +78,7 @@ export function LayoutProvider({
     const [nodesLength, setNodesLength] = useState<number>(nodes.length);
 
     useEffect(() => {
-        console.log("Node map size:", nodeIdWithNode.size);
-        console.log("Nodes length:", nodes.length);
         if(nodes.length !== nodesLength) {
-            console.log("Nodes length changed:", nodes.length);
             setNodesLength(nodes.length);
         }
     }
