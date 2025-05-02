@@ -21,7 +21,7 @@ A React library for automated layout of nested node graphs with parent-child rel
 
 ## Breaking Changes in 1.0.0
 
-Version 1.0.0 introduces several breaking changes that require updates to your code:
+Version 1.0.0 introduces one breaking change that require updates to your code:
 
 ### 1. Parent-Child Relationship Maps
 
@@ -84,13 +84,16 @@ The LayoutProvider component props have changed accordingly:
 **New API (v1.0.0):**
 ```jsx
 <LayoutProvider
-  // ...other props
-  nodeParentIdMapWithChildIdSet={nodeParentIdMapWithChildIdSet}
-  nodeIdWithNode={nodeIdWithNode}
+//All props now optional!
 >
 ```
 
 ## Patch Updates
+
+### 1.0.0 (2025-05-02)
+
+- **Optional Relationship Maps**: Made `nodeIdWithNode` and `nodeParentIdMapWithChildIdSet` optional in `LayoutProvider`. When not provided, these maps are now managed internally.
+- **Simplified Usage**: Users no longer need to manually manage relationship maps if they don't need custom control over them.
 
 ### 0.3.3 (2025-04-21)
 
@@ -119,6 +122,50 @@ npm install @jalez/react-flow-automated-layout
 ## Quick Start
 
 First, set up your React Flow component and then wrap it with the LayoutProvider:
+
+### Simple Setup (v1.0.0+)
+
+```jsx
+import { useState, useCallback } from 'react';
+import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState } from '@xyflow/react';
+import { LayoutProvider, LayoutControls } from '@jalez/react-flow-automated-layout';
+import '@xyflow/react/dist/style.css';
+
+function FlowDiagram() {
+  // Set up React Flow states
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  
+  return (
+    <ReactFlowProvider>
+      <LayoutProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+        >
+          {/* Add LayoutControls to your Controls component */}
+          <Controls position="top-right">
+            <LayoutControls 
+              showDirectionControls={true}
+              showAutoLayoutToggle={true}
+              showSpacingControls={true}
+              showApplyLayoutButton={true}
+            />
+          </Controls>
+          <Background />
+        </ReactFlow>
+      </LayoutProvider>
+    </ReactFlowProvider>
+  );
+}
+```
+
+### Manual Control Setup (All versions)
+
+For cases where you need custom control over relationship maps:
 
 ```jsx
 import { useState, useCallback, useEffect } from 'react';
