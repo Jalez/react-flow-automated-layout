@@ -8,10 +8,10 @@ import {
 } from '../HierarchicalLayoutOrganizer';
 import type { Direction } from '../HierarchicalLayoutOrganizer';
 import { TreeNode } from '../../utils/treeUtils';
-import { LayoutResult } from '../LayoutElementsWithDagre';
+import { LayoutResult } from '../Dagre';
 
-// Mock implementation of calculateLayoutWithDagre
-const mockCalculateLayoutWithDagre = vi.fn((
+// Mock implementation of calculateLayoutWithDagre that returns a Promise
+const mockCalculateLayoutWithDagre = vi.fn(async (
   _nodes: Node[],
   _edges: Edge[],
   _direction: Direction,
@@ -21,9 +21,9 @@ const mockCalculateLayoutWithDagre = vi.fn((
   defaultNodeWidth?: number,
   defaultNodeHeight?: number,
   _includeHidden?: boolean
-): LayoutResult => {
+): Promise<LayoutResult> => {
   // Return a mock layout result
-  return {
+  return Promise.resolve({
     nodes: _nodes.map(node => ({
       ...node,
       position: { x: 100, y: 100 },
@@ -38,7 +38,7 @@ const mockCalculateLayoutWithDagre = vi.fn((
     edges: _edges,
     width: 300,
     height: 200
-  };
+  });
 });
 
 describe('HierarchicalLayoutOrganizer', () => {
@@ -149,10 +149,10 @@ describe('HierarchicalLayoutOrganizer', () => {
   });
 
   describe('layoutSingleContainer', () => {
-    it('should layout a single container with child nodes', () => {
+    it('should layout a single container with child nodes', async () => {
       const setup = createTestSetup();
       
-      const result = layoutSingleContainer(
+      const result = await layoutSingleContainer(
         'parent1',
         'TB',
         setup.nodeParentIdMapWithChildIdSet,
@@ -173,10 +173,10 @@ describe('HierarchicalLayoutOrganizer', () => {
       expect(result.udpatedParentNode?.height).toBe(200);
     });
     
-    it('should return empty arrays when no children exist', () => {
+    it('should return empty arrays when no children exist', async () => {
       const setup = createTestSetup();
       
-      const result = layoutSingleContainer(
+      const result = await layoutSingleContainer(
         'nonexistent',
         'TB',
         setup.nodeParentIdMapWithChildIdSet,
@@ -197,10 +197,10 @@ describe('HierarchicalLayoutOrganizer', () => {
   });
 
   describe('organizeLayoutRecursively', () => {
-    it('should layout nodes recursively up the parent chain', () => {
+    it('should layout nodes recursively up the parent chain', async () => {
       const setup = createTestSetup();
       
-      const result = organizeLayoutRecursively(
+      const result = await organizeLayoutRecursively(
         'child1',
         'TB',
         setup.nodeParentIdMapWithChildIdSet,
@@ -223,10 +223,10 @@ describe('HierarchicalLayoutOrganizer', () => {
       expect(mockCalculateLayoutWithDagre).toHaveBeenCalledTimes(2);
     });
     
-    it('should handle non-existent parent IDs gracefully', () => {
+    it('should handle non-existent parent IDs gracefully', async () => {
       const setup = createTestSetup();
       
-      const result = organizeLayoutRecursively(
+      const result = await organizeLayoutRecursively(
         'nonexistent',
         'TB',
         setup.nodeParentIdMapWithChildIdSet,
@@ -246,7 +246,7 @@ describe('HierarchicalLayoutOrganizer', () => {
   });
 
   describe('organizeLayoutByTreeDepth', () => {
-    it('should layout nodes from deepest to shallowest level', () => {
+    it('should layout nodes from deepest to shallowest level', async () => {
       const setup = createTestSetup();
       
       // Create a proper parent tree matching the TreeNode interface
@@ -289,7 +289,7 @@ describe('HierarchicalLayoutOrganizer', () => {
         }
       ];
       
-      const result = organizeLayoutByTreeDepth(
+      const result = await organizeLayoutByTreeDepth(
         parentTree,
         'TB',
         setup.nodeParentIdMapWithChildIdSet,

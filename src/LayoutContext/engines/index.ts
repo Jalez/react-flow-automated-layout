@@ -1,5 +1,5 @@
 import { LayoutEngine } from '../context/LayoutContext';
-import { calculateLayoutWithDagre } from '../core/LayoutElementsWithDagre';
+import { calculateLayoutWithDagre } from '../core/Dagre';
 import type { LayoutConfig } from '../hooks/useLayoutCalculation';
 
 /**

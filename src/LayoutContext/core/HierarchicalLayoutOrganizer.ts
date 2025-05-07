@@ -1,16 +1,51 @@
 import { Edge, Node } from "@xyflow/react";
-import { calculateLayoutWithDagre } from "./LayoutElementsWithDagre";
+import { calculateLayoutWithDagre } from "./Dagre";
 import { TreeNode } from "../utils/treeUtils";
 
 export type Direction = 'TB' | 'LR' | 'RL' | 'BT';
 
-const getEdgesOfNodes = (nodes: Node[], edges: Edge[]): Edge[] => {
-    return edges.filter((edge) => {
-        return nodes.some((node) => {
-            return edge.source === node.id || edge.target === node.id;
-        });
-    });
+const getEdgesOfNodes = (nodeIdSet: Set<string>, edges: Edge[], nodeIdWithNode: Map<string, Node>): {
+    alteredEdges: Edge[],
+    unalteredEdges: Edge[]
+
+} => {
+    const alteredEdges: Edge[] = [];
+    const unalteredEdges: Edge[] = [];
+    for (const edge of edges) {
+        //if the source is a node or the target is a node, we will add it to both edge sets
+        if (nodeIdSet.has(edge.source) || nodeIdSet.has(edge.target)) {
+            unalteredEdges.push(JSON.parse(JSON.stringify(edge)));
+            //If both source and target are not in the nodeIdSet, we will need to 
+            if (!nodeIdSet.has(edge.target)) {
+                const childNode = nodeIdWithNode.get(edge.target);
+                if (childNode && childNode.parentId) {
+                    const parentNode = nodeIdWithNode.get(childNode.parentId);
+                    if (parentNode) {
+                        edge.target = parentNode.id;
+                    }
+                }
+            }
+            else if (!nodeIdSet.has(edge.source)) {
+                const childNode = nodeIdWithNode.get(edge.source);
+                if (childNode && childNode.parentId) {
+                    const parentNode = nodeIdWithNode.get(childNode.parentId);
+                    if (parentNode) {
+                        edge.source = parentNode.id;
+                    }
+                }
+            }
+            alteredEdges.push(edge);
+        }
+       
+    }
+
+   
+    return {
+        alteredEdges: alteredEdges,
+        unalteredEdges: unalteredEdges,
+    }
 }
+
 
 const MARGIN = 10;
 
@@ -31,9 +66,9 @@ const MARGIN = 10;
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param includeHidden - Whether to include hidden nodes in the layout
  * @param noParentKey - Key used to represent nodes without a parent
- * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
+ * @returns Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }>
  */
-export const organizeLayoutRecursively = (
+export const organizeLayoutRecursively = async (
     parentNodeId: string,
     direction: Direction,
     nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
@@ -47,10 +82,10 @@ export const organizeLayoutRecursively = (
     LayoutAlgorithm = calculateLayoutWithDagre,
     includeHidden: boolean = false,
     noParentKey: string = 'no-parent'
-): { updatedNodes: Node[], updatedEdges: Edge[] } => {
+): Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }> => {
 
     const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
-        layoutSingleContainer(
+        await layoutSingleContainer(
             parentNodeId,
             direction,
             nodeParentIdMapWithChildIdSet,
@@ -70,7 +105,7 @@ export const organizeLayoutRecursively = (
         return { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges };
     }
 
-    const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = organizeLayoutRecursively(
+    const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = await organizeLayoutRecursively(
         parentNode.parentId || noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,
@@ -111,11 +146,11 @@ export const organizeLayoutRecursively = (
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
  * @param includeHidden - Whether to include hidden nodes in the layout
- * @returns { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }
+ * @returns Promise<{ updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }>
  */
-export const layoutSingleContainer = (
+export const layoutSingleContainer = async (
     parentNodeId: string,
-    direction: Direction,
+    defaultDirection: Direction,
     nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
     nodeIdWithNode: Map<string, Node>,
     edges: Edge[],
@@ -125,15 +160,11 @@ export const layoutSingleContainer = (
     defaultNodeWidth: number = 172,
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre,
-    includeHidden: boolean = false
-): { updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node } => {
+    includeHidden: boolean = false,
+): Promise<{ updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }> => {
     // Get the set of child IDs for this parent
     const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
-    if (!childIdSet) {
-        return { updatedNodes: [], updatedEdges: [] };
-    }
-
-    if (childIdSet.size === 0) {
+    if (!childIdSet || childIdSet.size === 0) {
         return { updatedNodes: [], updatedEdges: [] };
     }
 
@@ -149,12 +180,22 @@ export const layoutSingleContainer = (
     if (nodesToLayout.length === 0) {
         return { updatedNodes: [], updatedEdges: [] };
     }
+    let direction = defaultDirection;
+    const parentNode = nodeIdWithNode.get(parentNodeId);
+    if (parentNode) {
+        if (parentNode.data.layoutDirection) {
+            direction = parentNode.data.layoutDirection as Direction;
+        }
 
-    const edgesToLayout = getEdgesOfNodes(nodesToLayout, edges);
-    const { nodes: layoutedNodes, edges: layoutedEdges, width, height } =
-        LayoutAlgorithm(
+    }
+
+    const { alteredEdges, unalteredEdges } = getEdgesOfNodes(childIdSet, edges, nodeIdWithNode);
+
+
+    const { nodes: layoutedNodes, edges: _, width, height } =
+        await LayoutAlgorithm(
             nodesToLayout,
-            edgesToLayout,
+            alteredEdges,
             direction,
             margin,
             nodeSpacing,
@@ -164,14 +205,13 @@ export const layoutSingleContainer = (
             includeHidden
         );
 
-    const parentNode = nodeIdWithNode.get(parentNodeId);
     if (parentNode && width && height) {
         fixParentNodeDimensions(parentNode, width, height);
     }
 
     return {
         updatedNodes: [...layoutedNodes],
-        updatedEdges: [...layoutedEdges],
+        updatedEdges: [...unalteredEdges],
         udpatedParentNode: parentNode || undefined,
     };
 }
@@ -215,9 +255,9 @@ export const fixParentNodeDimensions = (
  * @param LayoutAlgorithm - The layout algorithm to use
  * @param includeHidden - Whether to include hidden nodes in the layout
  * @param noParentKey - Key used to represent nodes without a parent
- * @returns { updatedNodes: Node[], updatedEdges: Edge[] }
+ * @returns Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }>
  */
-export const organizeLayoutByTreeDepth = (
+export const organizeLayoutByTreeDepth = async (
     parentTree: TreeNode[],
     direction: Direction,
     nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
@@ -231,7 +271,7 @@ export const organizeLayoutByTreeDepth = (
     LayoutAlgorithm = calculateLayoutWithDagre,
     includeHidden: boolean = false,
     noParentKey: string = 'no-parent'
-): { updatedNodes: Node[], updatedEdges: Edge[] } => {
+): Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }> => {
     // Array to store all updated nodes and edges
     let allUpdatedNodes: Node[] = [];
     let allUpdatedEdges: Edge[] = [];
@@ -263,8 +303,9 @@ export const organizeLayoutByTreeDepth = (
     for (let depth = maxDepth; depth >= 0; depth--) {
         const parentIds = nodesByDepth.get(depth) || [];
 
-        for (const parentId of parentIds) {
-            const { updatedNodes, updatedEdges } = layoutSingleContainer(
+        // Process each level in parallel
+        const levelResults = await Promise.all(parentIds.map(parentId =>
+            layoutSingleContainer(
                 parentId,
                 direction,
                 nodeParentIdMapWithChildIdSet,
@@ -277,16 +318,18 @@ export const organizeLayoutByTreeDepth = (
                 defaultNodeHeight,
                 LayoutAlgorithm,
                 includeHidden
-            );
+            )
+        ));
 
-            // Merge with already processed nodes and edges
+        // Merge results from this level
+        for (const { updatedNodes, updatedEdges } of levelResults) {
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
             allUpdatedEdges = [...updatedEdges, ...allUpdatedEdges];
         }
     }
 
     // Finally, process noParentKey to handle root-level elements
-    const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = layoutSingleContainer(
+    const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = await layoutSingleContainer(
         noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,

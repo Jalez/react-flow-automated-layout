@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Node, Edge } from '@xyflow/react';
-import { calculateLayoutWithDagre } from '../LayoutElementsWithDagre';
+import { calculateLayoutWithDagre } from '../Dagre';
 import * as layoutProviderUtils from '../../utils/layoutProviderUtils';
 
 // Mock the layoutProviderUtils functions
@@ -44,11 +44,11 @@ describe('LayoutElementsWithDagre', () => {
       },
     ];
 
-    it('should apply layout to nodes and edges', () => {
+    it('should apply layout to nodes and edges', async () => {
       const nodes = createTestNodes();
       const edges = createTestEdges();
 
-      const result = calculateLayoutWithDagre(
+      const result =await calculateLayoutWithDagre(
         nodes,
         edges,
         'TB',
@@ -74,11 +74,11 @@ describe('LayoutElementsWithDagre', () => {
       });
     });
 
-    it('should use default values for node width and height if not provided', () => {
+    it('should use default values for node width and height if not provided', async () => {
       const nodes = createTestNodes();
       const edges = createTestEdges();
 
-      const result = calculateLayoutWithDagre(nodes, edges, 'TB');
+      const result = await calculateLayoutWithDagre(nodes, edges, 'TB');
 
       expect(result.nodes).toHaveLength(3);
       
@@ -89,7 +89,7 @@ describe('LayoutElementsWithDagre', () => {
       expect(result.height).toBeGreaterThan(0);
     });
 
-    it('should use node dimensions from style if available', () => {
+    it('should use node dimensions from style if available', async () => {
       const nodes: Node[] = [
         {
           id: 'node1',
@@ -112,7 +112,7 @@ describe('LayoutElementsWithDagre', () => {
         },
       ];
 
-      const result = calculateLayoutWithDagre(
+      const result = await calculateLayoutWithDagre(
         nodes,
         edges,
         'TB',
@@ -128,7 +128,7 @@ describe('LayoutElementsWithDagre', () => {
       expect(result.height).toBeGreaterThan(0);
     });
 
-    it('should exclude hidden nodes when includeHidden is false', () => {
+    it('should exclude hidden nodes when includeHidden is false', async () => {
       const nodes: Node[] = [
         {
           id: 'node1',
@@ -161,7 +161,7 @@ describe('LayoutElementsWithDagre', () => {
         },
       ];
 
-      const result = calculateLayoutWithDagre(
+      const result = await calculateLayoutWithDagre(
         nodes,
         edges,
         'TB',
@@ -177,7 +177,7 @@ describe('LayoutElementsWithDagre', () => {
       expect(result.edges).toHaveLength(2); // All edges should still be included
     });
     
-    it('should include hidden nodes when includeHidden is true', () => {
+    it('should include hidden nodes when includeHidden is true', async () => {
       const nodes: Node[] = [
         {
           id: 'node1',
@@ -200,7 +200,7 @@ describe('LayoutElementsWithDagre', () => {
         },
       ];
 
-      const result = calculateLayoutWithDagre(
+      const result = await calculateLayoutWithDagre(
         nodes,
         edges,
         'TB',
@@ -215,8 +215,8 @@ describe('LayoutElementsWithDagre', () => {
       expect(result.nodes).toHaveLength(2); // All nodes should be included
     });
 
-    it('should handle empty node array', () => {
-      const result = calculateLayoutWithDagre([], [], 'TB');
+    it('should handle empty node array', async () => {
+      const result = await calculateLayoutWithDagre([], [], 'TB');
       
       expect(result.nodes).toHaveLength(0);
       expect(result.edges).toHaveLength(0);
@@ -224,11 +224,11 @@ describe('LayoutElementsWithDagre', () => {
       expect(result.height).toBe(0);
     });
 
-    it('should call helper functions with correct direction', () => {
+    it('should call helper functions with correct direction', async () => {
       const nodes = createTestNodes();
       const edges = createTestEdges();
 
-      calculateLayoutWithDagre(nodes, edges, 'LR');
+      await calculateLayoutWithDagre(nodes, edges, 'LR');
       
       expect(layoutProviderUtils.convertDirectionToLayout).toHaveBeenCalledWith('LR');
     });
