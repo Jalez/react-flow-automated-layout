@@ -11,7 +11,6 @@ import LayoutContext, {
 import { engines } from '../engines';
 import { DEFAULT_PARENT_RESIZING_OPTIONS, filterVisibleNodesAndEdges } from '../utils/layoutProviderUtils';
 import { useLayoutCalculation } from '../hooks/useLayoutCalculation';
-
 interface LayoutProviderProps {
     children: ReactNode;
     initialDirection?: LayoutDirection;
@@ -218,7 +217,10 @@ export function LayoutProvider({
         try {
             setLayoutInProgress(true);
             applyingLayoutRef.current = true;
+            
+            // calculateLayout is now async, so await its result
             const result = await calculateLayout(filteredNodes, filteredEdges, selectedNodes);
+            
             // Update nodes and edges
             if (updateNodes) {
                 updateNodes(result.nodes);
@@ -261,6 +263,7 @@ export function LayoutProvider({
         updateNodes,
         updateEdges,
         reactFlowInstance,
+        layoutHidden // Added layoutHidden to dependencies
     ]);
 
     // Effect to check when maps are populated and mark initialization complete

@@ -25,10 +25,10 @@ export interface LayoutConfig {
 /**
  * Process selected node IDs for layout calculations (refactored to use LayoutConfig)
  */
-export const processSelectedNodes = (
+export const processSelectedNodes = async (
   selectedNodes: Node[],
   config: LayoutConfig
-): { nodes: Node[], edges: Edge[] } => {
+): Promise<{ nodes: Node[], edges: Edge[] }> => {
   const {
     dagreDirection,
     nodeParentIdMapWithChildIdSet,
@@ -57,28 +57,37 @@ export const processSelectedNodes = (
   // Map to track updated nodes and edges (using node/edge ID as key for faster lookups)
   const updatedNodesMap = new Map<string, Node>();
   const updatedEdgesMap = new Map<string, Edge>();
-  for (const parentId of filteredParentIds) {
-    const { updatedNodes, updatedEdges } = organizeLayoutRecursively(
-      parentId,
-      dagreDirection as any,
-      nodeParentIdMapWithChildIdSet,
-      nodeIdWithNode,
-      edges,
-      margin,
-      nodeSpacing,
-      layerSpacing,
-      nodeWidth,
-      nodeHeight,
-      undefined,
-      layoutHidden
-    );
+  
+  // Process each parent in parallel
+  const results = await Promise.all(
+    filteredParentIds.map(parentId => 
+      organizeLayoutRecursively(
+        parentId,
+        dagreDirection as any,
+        nodeParentIdMapWithChildIdSet,
+        nodeIdWithNode,
+        edges,
+        margin,
+        nodeSpacing,
+        layerSpacing,
+        nodeWidth,
+        nodeHeight,
+        undefined,
+        layoutHidden
+      )
+    )
+  );
+  
+  // Collect all results from parallel processing
+  results.forEach(({ updatedNodes, updatedEdges }) => {
     updatedNodes.forEach(node => {
       updatedNodesMap.set(node.id, node);
     });
     updatedEdges.forEach(edge => {
       updatedEdgesMap.set(edge.id, edge);
     });
-  }
+  });
+
   const updatedNodes = nodes.map(node =>
     updatedNodesMap.has(node.id) ? updatedNodesMap.get(node.id)! : node
   );
@@ -150,7 +159,7 @@ export const useLayoutCalculation = (
         ? selectedNodes
         : selectedNodes.filter(node => !node.hidden);
       
-      const result = processSelectedNodes(
+      const result = await processSelectedNodes(
         filteredSelectedNodes,
         {
           dagreDirection,
@@ -173,7 +182,7 @@ export const useLayoutCalculation = (
     } else {
       // Use our helper function to process the entire tree in depth order
       const nodeTree = buildNodeTree(nodeParentIdMapWithChildIdSet, nodeIdWithNode, noParentKey);
-      const result = organizeLayoutByTreeDepth(
+      const result = await organizeLayoutByTreeDepth(
         nodeTree,
         dagreDirection,
         nodeParentIdMapWithChildIdSet,
@@ -217,7 +226,8 @@ export const useLayoutCalculation = (
     layerSpacing,
     nodeWidth,
     nodeHeight,
-    layoutHidden
+    layoutHidden,
+    noParentKey
   ]);
 
   return { calculateLayout };
