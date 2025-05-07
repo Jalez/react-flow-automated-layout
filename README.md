@@ -90,6 +90,16 @@ The LayoutProvider component props have changed accordingly:
 
 ## Patch Updates
 
+### 1.1.0 (2025-05-07)
+
+- **Layout Engine System**: Implemented a new pluggable layout engine architecture to support multiple layout algorithms
+- **Dagre Engine Adapter**: Converted existing Dagre implementation to use the new engine interface
+- **Enhanced Configuration**: Added more flexible configuration options for layout engines
+- **Improved Type Safety**: Better TypeScript type definitions for layout configuration
+- **Smart Edge Routing**: Enhanced edge handling for connections between non-sibling nodes, automatically routing edges to appropriate parent containers
+- **Per-Container Layout Direction**: Support for individual layout directions per container using `data.layoutDirection` property on parent nodes
+- **Parallel Layout Processing**: Improved performance with asynchronous parallel processing of layouts
+
 ### 1.0.0 (2025-05-02)
 
 - **Optional Relationship Maps**: Made `nodeIdWithNode` and `nodeParentIdMapWithChildIdSet` optional in `LayoutProvider`. When not provided, these maps are now managed internally.
@@ -487,6 +497,123 @@ function CustomLayoutControl() {
 - **LayoutControls**: Ready-to-use UI component for adjusting layout settings
 - **HierarchicalLayoutOrganizer**: Core layout engine that handles parent-child relationships
 - **useLayoutContext**: Hook for accessing layout context in custom components
+- **LayoutEngine**: Interface for creating custom layout engines (new in v1.1.0)
+
+## Layout Engine System
+
+Starting with v1.1.0, the library implements a pluggable layout engine architecture that allows for different layout algorithms to be used. Currently, the library ships with the Dagre engine:
+
+```jsx
+import { LayoutProvider, engines } from '@jalez/react-flow-automated-layout';
+
+function FlowDiagram() {
+  return (
+    <LayoutProvider
+      // Optionally specify a different engine (dagre is the default)
+      engine={engines.dagre}
+    >
+      {/* Your React Flow component */}
+    </LayoutProvider>
+  );
+}
+```
+
+### Per-Container Layout Direction (v1.1.0+)
+
+You can now set different layout directions for individual containers by adding a `layoutDirection` property to the parent node's data object:
+
+```jsx
+// Parent nodes with different layout directions
+const parentNodes = [
+  {
+    id: 'container1',
+    type: 'group',
+    data: { 
+      label: 'Vertical Layout',
+      layoutDirection: 'TB' // Top to Bottom layout for this container's children
+    },
+    position: { x: 0, y: 0 },
+    style: { width: 400, height: 400 }
+  },
+  {
+    id: 'container2',
+    type: 'group',
+    data: { 
+      label: 'Horizontal Layout',
+      layoutDirection: 'LR' // Left to Right layout for this container's children
+    },
+    position: { x: 500, y: 0 },
+    style: { width: 400, height: 400 }
+  }
+];
+```
+
+This allows you to create more complex diagrams with different layout directions per section, all while maintaining the global layout algorithm for parent relationships.
+
+### Smart Edge Routing (v1.1.0+)
+
+The new edge handling system automatically manages connections between nodes in different containers, rerouting edges to the appropriate parent containers when necessary. This works automatically when you create edges between nodes that aren't direct siblings:
+
+```jsx
+// Example edge between nodes in different containers
+const crossContainerEdge = {
+  id: 'edge-cross-container',
+  source: 'node-in-container1',
+  target: 'node-in-container2'
+};
+```
+
+When this edge is processed by the layout engine, it will intelligently:
+
+1. Detect that source and target are in different containers
+2. Temporarily reroute the edge between the appropriate parent containers for layout calculations
+3. Preserve the original edge connectivity in the final rendered graph
+
+This leads to cleaner diagrams with more logical edge paths, especially in complex nested structures.
+
+### Creating Custom Layout Engines
+
+You can implement your own layout engine by implementing the LayoutEngine interface:
+
+```typescript
+import { LayoutEngine } from '@jalez/react-flow-automated-layout';
+
+const MyCustomEngine: LayoutEngine = {
+  calculate: async (nodes, edges, options) => {
+    // Your custom layout algorithm implementation
+    // Must return positioned nodes with { position: { x, y } }
+    return layoutedNodes;
+  }
+};
+
+// Then use your engine in the LayoutProvider
+<LayoutProvider engine={MyCustomEngine}>
+  {/* Your React Flow component */}
+</LayoutProvider>
+```
+
+### Layout Configuration
+
+The layout engine system provides flexible configuration options:
+
+```typescript
+// Example of configuration options for layout engines
+const layoutConfig = {
+  nodes: nodes,
+  edges: edges,
+  dagreDirection: 'TB', // 'TB', 'BT', 'LR', or 'RL'
+  margin: 20,
+  nodeSpacing: 50,
+  layerSpacing: 50,
+  nodeWidth: 172,
+  nodeHeight: 36,
+  layoutHidden: false // Whether to include hidden nodes in layout
+};
+
+// Access configuration through the context
+const { setLayoutConfig } = useLayoutContext();
+setLayoutConfig(layoutConfig);
+```
 
 ## Future Plans
 
