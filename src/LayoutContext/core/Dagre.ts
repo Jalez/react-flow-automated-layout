@@ -98,7 +98,6 @@ export const calculateLayoutWithDagre = async (
       targetPosition,
       selected: false,
     };
-    console.log("USING NEW VERSION OF CALCULATE LAYOUT WITH DAGRE");
     const cx = dgNode.x, cy = dgNode.y;
     switch (node.data?.positionType) {
       case 'center':
