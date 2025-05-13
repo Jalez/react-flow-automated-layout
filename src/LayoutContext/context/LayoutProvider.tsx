@@ -224,7 +224,8 @@ export function LayoutProvider({
             // Update nodes and edges
             if (updateNodes) {
                 updateNodes(result.nodes);
-            } else if (reactFlowInstance?.setNodes) {
+            } 
+            else if (reactFlowInstance?.setNodes) {
                 reactFlowInstance.setNodes(result.nodes);
             }
 
