@@ -14,32 +14,35 @@ const getEdgesOfNodes = (nodeIdSet: Set<string>, edges: Edge[], nodeIdWithNode: 
     for (const edge of edges) {
         //if the source is a node or the target is a node, we will add it to both edge sets
         if (nodeIdSet.has(edge.source) || nodeIdSet.has(edge.target)) {
+            // Create deep copy for unaltered edges
             unalteredEdges.push(JSON.parse(JSON.stringify(edge)));
-            //If both source and target are not in the nodeIdSet, we will need to 
-            if (!nodeIdSet.has(edge.target)) {
-                const childNode = nodeIdWithNode.get(edge.target);
+            
+            // Create a deep copy for altered edges too instead of modifying the original
+            const alteredEdge = JSON.parse(JSON.stringify(edge));
+            
+            //If either source or target are not in the nodeIdSet, we will need to 
+            if (!nodeIdSet.has(alteredEdge.target)) {
+                const childNode = nodeIdWithNode.get(alteredEdge.target);
                 if (childNode && childNode.parentId) {
                     const parentNode = nodeIdWithNode.get(childNode.parentId);
                     if (parentNode) {
-                        edge.target = parentNode.id;
+                        alteredEdge.target = parentNode.id;
                     }
                 }
             }
-            else if (!nodeIdSet.has(edge.source)) {
-                const childNode = nodeIdWithNode.get(edge.source);
+            else if (!nodeIdSet.has(alteredEdge.source)) {
+                const childNode = nodeIdWithNode.get(alteredEdge.source);
                 if (childNode && childNode.parentId) {
                     const parentNode = nodeIdWithNode.get(childNode.parentId);
                     if (parentNode) {
-                        edge.source = parentNode.id;
+                        alteredEdge.source = parentNode.id;
                     }
                 }
             }
-            alteredEdges.push(edge);
+            alteredEdges.push(alteredEdge);
         }
-       
     }
 
-   
     return {
         alteredEdges: alteredEdges,
         unalteredEdges: unalteredEdges,
@@ -188,6 +191,8 @@ export const layoutSingleContainer = async (
         }
 
     }
+    console.log("EDGES", edges);
+    
 
     const { alteredEdges, unalteredEdges } = getEdgesOfNodes(childIdSet, edges, nodeIdWithNode);
 
@@ -207,6 +212,12 @@ export const layoutSingleContainer = async (
 
     if (parentNode && width && height) {
         fixParentNodeDimensions(parentNode, width, height);
+    }
+
+    if (
+        unalteredEdges.length > 0 &&
+        unalteredEdges[0].id === "e-course0-course1") {
+        console.log("UNALTEREED EDGES", unalteredEdges, edges);
     }
 
     return {
