@@ -276,8 +276,8 @@ export function LayoutProvider({
 
     // Effect to update handle positions and reapply layout when autoLayout is enabled
     useEffect(() => {
-        if(nodes.length !== nodeIdWithNode.size) {
-            return; // Skip if there is a discrepancy in node count: this prevents unnecessary layout recalculations when the nodes in the flow are not in sync with the context
+        if(!nodeIdWithNode.has(nodes[(nodes.length - 1)]?.id)) {
+            return; // Skip if there is a discrepancy in nodes: this prevents unnecessary layout recalculations when the nodes in the flow are not in sync with the context
         }
         if (childrenInitialized && autoLayout) {
             // Update handle positions based on new directions
