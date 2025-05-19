@@ -115,7 +115,6 @@ export function LayoutProvider({
 
     useEffect(() => {
         if(nodes.length !== nodesLength) {
-            console.log("Automated layout: Nodes length changed, updating state");
             setNodesLength(nodes.length);
         }
     }

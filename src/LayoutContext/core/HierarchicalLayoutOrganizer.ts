@@ -191,7 +191,7 @@ export const layoutSingleContainer = async (
         }
 
     }
-    console.log("EDGES", edges);
+    
     
 
     const { alteredEdges, unalteredEdges } = getEdgesOfNodes(childIdSet, edges, nodeIdWithNode);
@@ -214,11 +214,7 @@ export const layoutSingleContainer = async (
         fixParentNodeDimensions(parentNode, width, height);
     }
 
-    if (
-        unalteredEdges.length > 0 &&
-        unalteredEdges[0].id === "e-course0-course1") {
-        console.log("UNALTEREED EDGES", unalteredEdges, edges);
-    }
+
 
     return {
         updatedNodes: [...layoutedNodes],
