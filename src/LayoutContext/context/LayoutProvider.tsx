@@ -115,10 +115,11 @@ export function LayoutProvider({
 
     useEffect(() => {
         if(nodes.length !== nodesLength) {
+            console.log("Automated layout: Nodes length changed, updating state");
             setNodesLength(nodes.length);
         }
     }
-    , [nodes, nodeIdWithNode, nodesLength]);
+    , [nodes]);
     // Refs to prevent infinite loops
     const applyingLayoutRef = useRef(false);
     const pendingSpacingUpdateRef = useRef<{ node?: number, layer?: number } | null>(null);
@@ -276,6 +277,9 @@ export function LayoutProvider({
 
     // Effect to update handle positions and reapply layout when autoLayout is enabled
     useEffect(() => {
+        if(nodes.length !== nodeIdWithNode.size) {
+            return; // Skip if there is a discrepancy in node count: this prevents unnecessary layout recalculations when the nodes in the flow are not in sync with the context
+        }
         if (childrenInitialized && autoLayout) {
             // Update handle positions based on new directions
             applyLayout();
