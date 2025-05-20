@@ -90,6 +90,13 @@ The LayoutProvider component props have changed accordingly:
 
 ## Patch Updates
 
+### 1.1.1 (Unreleased)
+
+- Improved node count discrepancy check to prevent unnecessary layout recalculations when the flow is not in sync with the context.
+- Fixed edge mutation issue in getEdgesOfNodes function.
+- Removed leftover console logs and old files.
+- Minor code style improvements and refactoring.
+
 ### 1.1.0 (2025-05-07)
 
 - **Layout Engine System**: Implemented a new pluggable layout engine architecture to support multiple layout algorithms
