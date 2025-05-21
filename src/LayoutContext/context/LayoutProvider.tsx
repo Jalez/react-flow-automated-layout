@@ -199,7 +199,7 @@ export function LayoutProvider({
 
 
     // Apply layout to nodes and edges - with safeguards against recursive calls
-    const applyLayout = useCallback(async (
+    const applyLayoutHandle = useCallback(async (
         inputNodes: Node[] = [],
         inputEdges: Edge[] = []
     ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
@@ -213,9 +213,9 @@ export function LayoutProvider({
             return { nodes: nodesData, edges: edgesData };
         }
         // Use the new utility for filtering visible nodes/edges
-        const { nodes: filteredNodes, edges: filteredEdges } = filterVisibleNodesAndEdges(nodesData, edgesData, layoutHidden);
         try {
             setLayoutInProgress(true);
+            const { nodes: filteredNodes, edges: filteredEdges } = filterVisibleNodesAndEdges(nodesData, edgesData, layoutHidden);
             applyingLayoutRef.current = true;
             
             // calculateLayout is now async, so await its result
@@ -267,6 +267,22 @@ export function LayoutProvider({
         layoutHidden // Added layoutHidden to dependencies
     ]);
 
+    const applyLayout = (
+        inputNodes: Node[] = [],
+        inputEdges: Edge[] = []
+    ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
+        if (layoutInProgress) {
+            // If layout is already in progress, store the new node spacing and layer spacing
+            pendingSpacingUpdateRef.current = {
+                node: nodeSpacing,
+                layer: layerSpacing,
+            };
+            return Promise.resolve({ nodes: inputNodes, edges: inputEdges });
+        }
+        return applyLayoutHandle(inputNodes, inputEdges);
+    }
+
+
     // Effect to check when maps are populated and mark initialization complete
     useEffect(() => {
         if (nodeIdWithNode.size > 0 && nodeParentIdMapWithChildIdSet.size > 0 && !childrenInitialized) {
@@ -280,7 +296,6 @@ export function LayoutProvider({
             return; // Skip if there is a discrepancy in nodes: this prevents unnecessary layout recalculations when the nodes in the flow are not in sync with the context
         }
         if (childrenInitialized && autoLayout) {
-            // Update handle positions based on new directions
             applyLayout();
         }
     }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength]);
