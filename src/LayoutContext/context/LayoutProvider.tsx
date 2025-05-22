@@ -303,7 +303,7 @@ export function LayoutProvider({
         if (childrenInitialized && autoLayout) {
             applyLayout();
         }
-    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength, disableAutoLayoutEffect]);
+    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength]);
 
     // Calculate parent-child structure signature
     useEffect(() => {
