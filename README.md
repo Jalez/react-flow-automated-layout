@@ -92,8 +92,10 @@ The LayoutProvider component props have changed accordingly:
 
 ### 1.2.1 (2025-05-22)
 
-- Improved layout recalculation logic to prevent unnecessary layout runs when nodes are not in sync with context.
-- Minor bug fixes and code refactoring in LayoutProvider.
+- Added a new `disableAutoLayoutEffect` prop to `LayoutProvider`. This allows you to explicitly disable the automatic layout effect, giving you more control over when layouts are triggered.
+- Improved the auto layout effect logic: layout will not run if `disableAutoLayoutEffect` is true or if a layout is already in progress, preventing unwanted or redundant layout runs.
+- Enhanced the node discrepancy check: the layout effect now checks if the nodes in the context and the flow are in sync, and skips recalculation if not, reducing unnecessary layout operations.
+- Added a console log to indicate when the auto layout effect is triggered (for easier debugging and development).
 
 ### 1.1.1 (Unreleased)
 
