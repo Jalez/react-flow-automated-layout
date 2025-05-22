@@ -90,6 +90,11 @@ The LayoutProvider component props have changed accordingly:
 
 ## Patch Updates
 
+### 1.2.1 (2025-05-22)
+
+- Improved layout recalculation logic to prevent unnecessary layout runs when nodes are not in sync with context.
+- Minor bug fixes and code refactoring in LayoutProvider.
+
 ### 1.1.1 (Unreleased)
 
 - Improved node count discrepancy check to prevent unnecessary layout recalculations when the flow is not in sync with the context.

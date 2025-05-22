@@ -1,6 +1,6 @@
 {
   "name": "@jalez/react-flow-automated-layout",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "license": "MIT",
   "description": "A React library for automated layout of nested node graphs with parent-child relationships using React Flow",
