@@ -33,6 +33,7 @@ interface LayoutProviderProps {
     nodeParentIdMapWithChildIdSet?: Map<string, Set<string>>; // Now optional
     nodeIdWithNode?: Map<string, Node>; // Now optional
     noParentKey?: string; // Key for customizing the key for parentless nodes
+    disableAutoLayoutEffect?: boolean; // New prop to disable auto layout effect
 }
 
 /**
@@ -55,6 +56,7 @@ export function LayoutProvider({
     nodeParentIdMapWithChildIdSet: externalNodeParentIdMapWithChildIdSet,
     nodeIdWithNode: externalNodeIdWithNode,
     noParentKey = 'no-parent', // Default to 'no-parent' for backward compatibility
+    disableAutoLayoutEffect = false, // Default to false
 }: LayoutProviderProps) {
     // Get ReactFlow instance
     const reactFlowInstance = useReactFlow();
@@ -271,7 +273,7 @@ export function LayoutProvider({
         inputNodes: Node[] = [],
         inputEdges: Edge[] = []
     ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
-        if (layoutInProgress) {
+        if (layoutInProgress || disableAutoLayoutEffect) {
             // If layout is already in progress, store the new node spacing and layer spacing
             pendingSpacingUpdateRef.current = {
                 node: nodeSpacing,
@@ -279,6 +281,8 @@ export function LayoutProvider({
             };
             return Promise.resolve({ nodes: inputNodes, edges: inputEdges });
         }
+    
+
         return applyLayoutHandle(inputNodes, inputEdges);
     }
 
@@ -292,13 +296,14 @@ export function LayoutProvider({
 
     // Effect to update handle positions and reapply layout when autoLayout is enabled
     useEffect(() => {
+        if (disableAutoLayoutEffect) return; // Skip effect if disabled
         if(!nodeIdWithNode.has(nodes[(nodes.length - 1)]?.id)) {
             return; // Skip if there is a discrepancy in nodes: this prevents unnecessary layout recalculations when the nodes in the flow are not in sync with the context
         }
         if (childrenInitialized && autoLayout) {
             applyLayout();
         }
-    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength]);
+    }, [childrenInitialized, autoLayout, direction, numberOfNodes, nodeSpacing, layerSpacing, parentChildStructure, nodesLength, disableAutoLayoutEffect]);
 
     // Calculate parent-child structure signature
     useEffect(() => {
