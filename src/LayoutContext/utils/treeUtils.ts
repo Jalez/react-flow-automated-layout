@@ -145,3 +145,85 @@ export const getMaxTreeDepth = (tree: TreeNode[]): number => {
   findMaxDepth(tree, 0);
   return maxDepth;
 };
+
+
+/**
+ * Get the path from a node to the root (including the node itself)
+ */
+export function getAncestorPath(
+  nodeId: string,
+  nodeIdWithNode: Map<string, Node>,
+  noParentKey: string = 'no-parent'
+): string[] {
+  const path: string[] = [];
+  let current = nodeId;
+  const visited = new Set<string>();
+  
+  while (current && current !== noParentKey) {
+    if (visited.has(current)) {
+      // Cycle detected - break to prevent infinite loop
+      console.warn(`Cycle detected in ancestor path for node ${nodeId}`);
+      break;
+    }
+    visited.add(current);
+    path.push(current);
+    
+    const node = nodeIdWithNode.get(current);
+    if (!node || !node.parentId) {
+      // Node has no parent, so its parent is the noParentKey
+      current = noParentKey;
+      break;
+    }
+    current = node.parentId;
+  }
+  
+  // Add root if we reached it
+  if (current === noParentKey) {
+    path.push(noParentKey);
+  }
+  
+  return path;
+}
+
+
+/**
+ * Enhanced LCA function that returns both the LCA and the immediate children
+ */
+export function findLCAWithChildren(
+  sourceNodeId: string,
+  targetNodeId: string,
+  nodeIdWithNode: Map<string, Node>,
+  noParentKey: string = 'no-parent'
+): { lca: string | null, sourceChild: string | null, targetChild: string | null } {
+  // Get all ancestors for both nodes (including themselves)
+  const sourceAncestors = getAncestorPath(sourceNodeId, nodeIdWithNode, noParentKey);
+  const targetAncestors = getAncestorPath(targetNodeId, nodeIdWithNode, noParentKey);
+  
+  // Convert target ancestors to Set for O(1) lookup
+  const targetAncestorSet = new Set(targetAncestors);
+  
+  // Find the first common ancestor from source's perspective
+  let lca: string | null = null;
+  let sourceChildIndex = -1;
+  
+  for (let i = 0; i < sourceAncestors.length; i++) {
+    if (targetAncestorSet.has(sourceAncestors[i])) {
+      lca = sourceAncestors[i];
+      sourceChildIndex = i;
+      break;
+    }
+  }
+  
+  if (!lca) {
+    return { lca: null, sourceChild: null, targetChild: null };
+  }
+  
+  // Find the index of LCA in target ancestors
+  const targetChildIndex = targetAncestors.indexOf(lca);
+  
+  // Extract children: the node before the LCA in the path (or the node itself if it's a direct child)
+  const sourceChild = sourceChildIndex > 0 ? sourceAncestors[sourceChildIndex - 1] : sourceNodeId;
+  const targetChild = targetChildIndex > 0 ? targetAncestors[targetChildIndex - 1] : targetNodeId;
+  
+  return { lca, sourceChild, targetChild };
+}
