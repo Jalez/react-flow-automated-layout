@@ -90,6 +90,15 @@ The LayoutProvider component props have changed accordingly:
 
 ## Patch Updates
 
+### 1.2.3 (2025-05-26)
+
+- **Enhanced Edge Handling**: Completely redesigned edge processing system for better reliability with complex nested structures
+- **Simplified Layout Pipeline**: Streamlined layout process with pre-computed temporary edge maps
+- **Improved LCA Calculations**: Enhanced Lowest Common Ancestor detection for more accurate edge routing
+- **Edge Loss Prevention**: Fixed critical edge loss issues in complex hierarchical structures
+- **Root-Level Processing**: Added proper root-level edge processing for unresolved edges
+- **Performance Optimizations**: Reduced complexity in edge processing with upfront calculations
+
 ### 1.2.1 (2025-05-22)
 
 - Added a new `disableAutoLayoutEffect` prop to `LayoutProvider`. This allows you to explicitly disable the automatic layout effect, giving you more control over when layouts are triggered.
