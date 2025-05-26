@@ -1,53 +1,10 @@
 import { Edge, Node } from "@xyflow/react";
 import { calculateLayoutWithDagre } from "./Dagre";
 import { TreeNode } from "../utils/treeUtils";
+import { createGlobalTemporaryEdgesMap } from "../utils/temporaryEdgeMapCreator";
 
 export type Direction = 'TB' | 'LR' | 'RL' | 'BT';
 
-const getEdgesOfNodes = (nodeIdSet: Set<string>, edges: Edge[], nodeIdWithNode: Map<string, Node>): {
-    alteredEdges: Edge[],
-    unalteredEdges: Edge[]
-
-} => {
-    const alteredEdges: Edge[] = [];
-    const unalteredEdges: Edge[] = [];
-    for (const edge of edges) {
-        //if the source is a node or the target is a node, we will add it to both edge sets
-        if (nodeIdSet.has(edge.source) || nodeIdSet.has(edge.target)) {
-            // Create deep copy for unaltered edges
-            unalteredEdges.push(JSON.parse(JSON.stringify(edge)));
-            
-            // Create a deep copy for altered edges too instead of modifying the original
-            const alteredEdge = JSON.parse(JSON.stringify(edge));
-            
-            //If either source or target are not in the nodeIdSet, we will need to 
-            if (!nodeIdSet.has(alteredEdge.target)) {
-                const childNode = nodeIdWithNode.get(alteredEdge.target);
-                if (childNode && childNode.parentId) {
-                    const parentNode = nodeIdWithNode.get(childNode.parentId);
-                    if (parentNode) {
-                        alteredEdge.target = parentNode.id;
-                    }
-                }
-            }
-            else if (!nodeIdSet.has(alteredEdge.source)) {
-                const childNode = nodeIdWithNode.get(alteredEdge.source);
-                if (childNode && childNode.parentId) {
-                    const parentNode = nodeIdWithNode.get(childNode.parentId);
-                    if (parentNode) {
-                        alteredEdge.source = parentNode.id;
-                    }
-                }
-            }
-            alteredEdges.push(alteredEdge);
-        }
-    }
-
-    return {
-        alteredEdges: alteredEdges,
-        unalteredEdges: unalteredEdges,
-    }
-}
 
 
 const MARGIN = 10;
@@ -87,7 +44,10 @@ export const organizeLayoutRecursively = async (
     noParentKey: string = 'no-parent'
 ): Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }> => {
 
-    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
+    // Create global temporary edges map once for the recursive processing
+    const temporaryEdgesByParent = createGlobalTemporaryEdgesMap(edges, nodeIdWithNode, noParentKey);
+
+    const { updatedNodes: updatedChildNodes } =
         await layoutSingleContainer(
             parentNodeId,
             direction,
@@ -100,15 +60,16 @@ export const organizeLayoutRecursively = async (
             defaultNodeWidth,
             defaultNodeHeight,
             LayoutAlgorithm,
-            includeHidden
+            includeHidden,
+            temporaryEdgesByParent
         );
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
     if (!parentNode) {
-        return { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges };
+        return { updatedNodes: updatedChildNodes, updatedEdges: edges };
     }
 
-    const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = await organizeLayoutRecursively(
+    const { updatedNodes: parentUpdatedNodes } = await organizeLayoutRecursively(
         parentNode.parentId || noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,
@@ -126,7 +87,7 @@ export const organizeLayoutRecursively = async (
 
     return {
         updatedNodes: [...parentUpdatedNodes, ...updatedChildNodes],
-        updatedEdges: [...parentUpdatedEdges, ...updatedChildEdges],
+        updatedEdges: edges, // Always return original edges unchanged
     };
 }
 
@@ -149,14 +110,14 @@ export const organizeLayoutRecursively = async (
  * @param defaultNodeHeight - Default height for nodes without explicit height
  * @param LayoutAlgorithm - The layout algorithm to use
  * @param includeHidden - Whether to include hidden nodes in the layout
- * @returns Promise<{ updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }>
+ * @returns Promise<{ updatedNodes: Node[], udpatedParentNode?: Node }>
  */
 export const layoutSingleContainer = async (
     parentNodeId: string,
     defaultDirection: Direction,
     nodeParentIdMapWithChildIdSet: Map<string, Set<string>>,
     nodeIdWithNode: Map<string, Node>,
-    edges: Edge[],
+    _originalEdges: Edge[], // Only used for returning unaltered edges
     margin: number = MARGIN,
     nodeSpacing: number = 50,
     layerSpacing: number = 50,
@@ -164,12 +125,14 @@ export const layoutSingleContainer = async (
     defaultNodeHeight: number = 36,
     LayoutAlgorithm = calculateLayoutWithDagre,
     includeHidden: boolean = false,
-): Promise<{ updatedNodes: Node[], updatedEdges: Edge[], udpatedParentNode?: Node }> => {
+    temporaryEdgesByParent: Map<string, Edge[]> = new Map() // Global temporary edges map
+): Promise<{ updatedNodes: Node[], udpatedParentNode?: Node }> => {
     // Get the set of child IDs for this parent
     const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
     if (!childIdSet || childIdSet.size === 0) {
-        return { updatedNodes: [], updatedEdges: [] };
+        return { updatedNodes: []};
     }
+
 
     // Convert the Set of IDs to an array of actual Node objects
     const nodesToLayout: Node[] = [];
@@ -181,26 +144,25 @@ export const layoutSingleContainer = async (
     });
 
     if (nodesToLayout.length === 0) {
-        return { updatedNodes: [], updatedEdges: [] };
+        return { updatedNodes: [] };
     }
+
     let direction = defaultDirection;
     const parentNode = nodeIdWithNode.get(parentNodeId);
+    
     if (parentNode) {
         if (parentNode.data.layoutDirection) {
             direction = parentNode.data.layoutDirection as Direction;
         }
-
     }
-    
-    
 
-    const { alteredEdges, unalteredEdges } = getEdgesOfNodes(childIdSet, edges, nodeIdWithNode);
-
+    // Simply get temporary edges for this level - no edge processing needed!
+    const temporaryEdgesForLevel = temporaryEdgesByParent.get(parentNodeId) || [];
 
     const { nodes: layoutedNodes, edges: _, width, height } =
         await LayoutAlgorithm(
             nodesToLayout,
-            alteredEdges,
+            temporaryEdgesForLevel, // Only use temporary edges for layout
             direction,
             margin,
             nodeSpacing,
@@ -214,11 +176,8 @@ export const layoutSingleContainer = async (
         fixParentNodeDimensions(parentNode, width, height);
     }
 
-
-
     return {
         updatedNodes: [...layoutedNodes],
-        updatedEdges: [...unalteredEdges],
         udpatedParentNode: parentNode || undefined,
     };
 }
@@ -279,9 +238,10 @@ export const organizeLayoutByTreeDepth = async (
     includeHidden: boolean = false,
     noParentKey: string = 'no-parent'
 ): Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }> => {
-    // Array to store all updated nodes and edges
     let allUpdatedNodes: Node[] = [];
-    let allUpdatedEdges: Edge[] = [];
+    
+    // Create global temporary edges map once at the beginning
+    const temporaryEdgesByParent = createGlobalTemporaryEdgesMap(edges, nodeIdWithNode, noParentKey);
 
     // Collect all parent IDs by depth (deepest first)
     const nodesByDepth: Map<number, string[]> = new Map();
@@ -310,53 +270,54 @@ export const organizeLayoutByTreeDepth = async (
     for (let depth = maxDepth; depth >= 0; depth--) {
         const parentIds = nodesByDepth.get(depth) || [];
 
-        // Process each level in parallel
+        // Process each parent at this level
         const levelResults = await Promise.all(parentIds.map(parentId =>
             layoutSingleContainer(
                 parentId,
                 direction,
                 nodeParentIdMapWithChildIdSet,
                 nodeIdWithNode,
-                edges,
+                edges, // Pass original edges (only used for returning)
                 margin,
                 nodeSpacing,
                 layerSpacing,
                 defaultNodeWidth,
                 defaultNodeHeight,
                 LayoutAlgorithm,
-                includeHidden
+                includeHidden,
+                temporaryEdgesByParent // Pass the global temporary edges map
             )
         ));
 
-        // Merge results from this level
-        for (const { updatedNodes, updatedEdges } of levelResults) {
+        // Collect only updated nodes (edges are always the same original edges)
+        for (const { updatedNodes } of levelResults) {
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
-            allUpdatedEdges = [...updatedEdges, ...allUpdatedEdges];
         }
     }
 
-    // Finally, process noParentKey to handle root-level elements
-    const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } = await layoutSingleContainer(
-        noParentKey,
-        direction,
-        nodeParentIdMapWithChildIdSet,
-        nodeIdWithNode,
-        edges,
-        margin,
-        nodeSpacing,
-        layerSpacing,
-        defaultNodeWidth,
-        defaultNodeHeight,
-        LayoutAlgorithm,
-        includeHidden
-    );
+    // CRITICAL: Process root level with temporary edges
+    const { updatedNodes: rootUpdatedNodes } = 
+        await layoutSingleContainer(
+            noParentKey,
+            direction,
+            nodeParentIdMapWithChildIdSet,
+            nodeIdWithNode,
+            edges, // Pass original edges (only used for returning)
+            margin,
+            nodeSpacing,
+            layerSpacing,
+            defaultNodeWidth,
+            defaultNodeHeight,
+            LayoutAlgorithm,
+            includeHidden,
+            temporaryEdgesByParent // Process root-level temporary edges
+        );
 
-    // Merge with already processed nodes and edges
+    // Final merge
     allUpdatedNodes = [...rootUpdatedNodes, ...allUpdatedNodes];
-    allUpdatedEdges = [...rootUpdatedEdges, ...allUpdatedEdges];
 
     return {
         updatedNodes: allUpdatedNodes,
-        updatedEdges: allUpdatedEdges,
+        updatedEdges: edges, // Always return original edges unchanged
     };
 }
