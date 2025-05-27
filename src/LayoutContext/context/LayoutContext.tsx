@@ -71,7 +71,7 @@ export interface LayoutContextState {
   setLayoutEngineOptions: (options: Record<string, any>) => void;
   
   // Layout application
-  applyLayout: (nodes?: Node[], edges?: Edge[]) => Promise<{nodes: Node[], edges: Edge[]}>;
+  applyLayout: (nodes?: Node[], edges?: Edge[]) => Promise<{nodes: Node[], edges: Edge[]}> | undefined;
   clearLayoutCache: () => void;
   
   // Layout engine registration
