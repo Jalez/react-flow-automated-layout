@@ -27,7 +27,8 @@ export interface LayoutConfig {
  */
 export const processSelectedNodes = async (
   selectedNodes: Node[],
-  config: LayoutConfig
+  config: LayoutConfig,
+  signal?: AbortSignal
 ): Promise<{ nodes: Node[], edges: Edge[] }> => {
   const {
     dagreDirection,
@@ -58,10 +59,17 @@ export const processSelectedNodes = async (
   const updatedNodesMap = new Map<string, Node>();
   const updatedEdgesMap = new Map<string, Edge>();
   
-  // Process each parent in parallel
+  // Process each parent in parallel, but check for abort signal before starting
+  if (signal?.aborted) {
+    return { nodes, edges };
+  }
+
   const results = await Promise.all(
-    filteredParentIds.map(parentId => 
-      organizeLayoutRecursively(
+    filteredParentIds.map(async parentId => {
+      if (signal?.aborted) {
+        return { updatedNodes: [], updatedEdges: [] };
+      }
+      return organizeLayoutRecursively(
         parentId,
         dagreDirection as any,
         nodeParentIdMapWithChildIdSet,
@@ -74,8 +82,8 @@ export const processSelectedNodes = async (
         nodeHeight,
         undefined,
         layoutHidden
-      )
-    )
+      );
+    })
   );
   
   // Collect all results from parallel processing
@@ -121,7 +129,8 @@ export const useLayoutCalculation = (
   const calculateLayout = useCallback(async (
     nodes: Node[],
     edges: Edge[],
-    selectedNodes?: Node[]
+    selectedNodes?: Node[],
+    signal?: AbortSignal
   ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
     // Get the appropriate layout engine from engines
     const engine = layoutEngines[algorithm] || layoutEngines.dagre;
@@ -174,12 +183,18 @@ export const useLayoutCalculation = (
           nodeHeight,
           layoutHidden,
           noParentKey
-        }
+        },
+        signal
       );
       
       updatedNodes = result.nodes;
       updatedEdges = result.edges;
     } else {
+      // Check abort signal before starting tree-based layout
+      if (signal?.aborted) {
+        return { nodes, edges };
+      }
+
       // Use our helper function to process the entire tree in depth order
       const nodeTree = buildNodeTree(nodeParentIdMapWithChildIdSet, nodeIdWithNode, noParentKey);
       const result = await organizeLayoutByTreeDepth(
