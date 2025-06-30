@@ -2,10 +2,9 @@ import { Edge, Node } from "@xyflow/react";
 import { calculateLayoutWithDagre } from "./Dagre";
 import { TreeNode } from "../utils/treeUtils";
 import { createGlobalTemporaryEdgesMap } from "../utils/temporaryEdgeMapCreator";
+import { getCyclicEdges } from "../utils/cyclicEdgeDetector";
 
 export type Direction = 'TB' | 'LR' | 'RL' | 'BT';
-
-
 
 const MARGIN = 10;
 
@@ -47,7 +46,7 @@ export const organizeLayoutRecursively = async (
     // Create global temporary edges map once for the recursive processing
     const temporaryEdgesByParent = createGlobalTemporaryEdgesMap(edges, nodeIdWithNode, noParentKey);
 
-    const { updatedNodes: updatedChildNodes } =
+    const { updatedNodes: updatedChildNodes, updatedEdges: updatedChildEdges } =
         await layoutSingleContainer(
             parentNodeId,
             direction,
@@ -69,7 +68,7 @@ export const organizeLayoutRecursively = async (
         return { updatedNodes: updatedChildNodes, updatedEdges: edges };
     }
 
-    const { updatedNodes: parentUpdatedNodes } = await organizeLayoutRecursively(
+    const { updatedNodes: parentUpdatedNodes, updatedEdges: parentUpdatedEdges } = await organizeLayoutRecursively(
         parentNode.parentId || noParentKey,
         direction,
         nodeParentIdMapWithChildIdSet,
@@ -87,7 +86,8 @@ export const organizeLayoutRecursively = async (
 
     return {
         updatedNodes: [...parentUpdatedNodes, ...updatedChildNodes],
-        updatedEdges: edges, // Always return original edges unchanged
+        updatedEdges: [...parentUpdatedEdges, ...updatedChildEdges]
+
     };
 }
 
@@ -126,11 +126,11 @@ export const layoutSingleContainer = async (
     LayoutAlgorithm = calculateLayoutWithDagre,
     includeHidden: boolean = false,
     temporaryEdgesByParent: Map<string, Edge[]> = new Map() // Global temporary edges map
-): Promise<{ updatedNodes: Node[], udpatedParentNode?: Node }> => {
+): Promise<{ updatedNodes: Node[], udpatedParentNode?: Node, updatedEdges: Edge[] }> => {
     // Get the set of child IDs for this parent
     const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
     if (!childIdSet || childIdSet.size === 0) {
-        return { updatedNodes: []};
+        return { updatedNodes: [], updatedEdges: []  };
     }
 
 
@@ -144,7 +144,7 @@ export const layoutSingleContainer = async (
     });
 
     if (nodesToLayout.length === 0) {
-        return { updatedNodes: [] };
+        return { updatedNodes: [] , updatedEdges: [] };
     }
 
     let direction = defaultDirection;
@@ -159,7 +159,17 @@ export const layoutSingleContainer = async (
     // Simply get temporary edges for this level - no edge processing needed!
     const temporaryEdgesForLevel = temporaryEdgesByParent.get(parentNodeId) || [];
 
-    const { nodes: layoutedNodes, edges: _, width, height } =
+    // Detect actual cyclic edges that would create feedback loops
+    const cyclicEdges = getCyclicEdges(_originalEdges, childIdSet);
+    console.log("temporaryEdgesForLevel", temporaryEdgesForLevel);
+    console.log("originalEdges", _originalEdges);
+    
+    // Optional: Log or handle cyclic edges (e.g., remove them for layout calculation)
+    if (cyclicEdges.length > 0) {
+        console.warn(`Found ${cyclicEdges.length} cyclic edge(s) in container ${parentNodeId}:`, cyclicEdges);
+    }
+
+    const { nodes: layoutedNodes, edges: updatedEdges, width, height } =
         await LayoutAlgorithm(
             nodesToLayout,
             temporaryEdgesForLevel, // Only use temporary edges for layout
@@ -169,16 +179,19 @@ export const layoutSingleContainer = async (
             layerSpacing,
             defaultNodeWidth,
             defaultNodeHeight,
-            includeHidden
+            includeHidden, 
+            cyclicEdges // Pass cyclic edges to the layout algorithm
         );
 
     if (parentNode && width && height) {
         fixParentNodeDimensions(parentNode, width, height);
     }
+    console.log("updated Edges (possibly cyclic)", updatedEdges);
 
     return {
         updatedNodes: [...layoutedNodes],
         udpatedParentNode: parentNode || undefined,
+        updatedEdges
     };
 }
 
@@ -239,6 +252,7 @@ export const organizeLayoutByTreeDepth = async (
     noParentKey: string = 'no-parent'
 ): Promise<{ updatedNodes: Node[], updatedEdges: Edge[] }> => {
     let allUpdatedNodes: Node[] = [];
+    let allUpdatedEdges: Edge[] = [];
     
     // Create global temporary edges map once at the beginning
     const temporaryEdgesByParent = createGlobalTemporaryEdgesMap(edges, nodeIdWithNode, noParentKey);
@@ -290,13 +304,14 @@ export const organizeLayoutByTreeDepth = async (
         ));
 
         // Collect only updated nodes (edges are always the same original edges)
-        for (const { updatedNodes } of levelResults) {
+        for (const { updatedNodes, updatedEdges } of levelResults) {
             allUpdatedNodes = [...updatedNodes, ...allUpdatedNodes];
+            allUpdatedEdges = [...updatedEdges, ...allUpdatedEdges];
         }
     }
 
     // CRITICAL: Process root level with temporary edges
-    const { updatedNodes: rootUpdatedNodes } = 
+    const { updatedNodes: rootUpdatedNodes, updatedEdges: rootUpdatedEdges } =
         await layoutSingleContainer(
             noParentKey,
             direction,
@@ -315,9 +330,11 @@ export const organizeLayoutByTreeDepth = async (
 
     // Final merge
     allUpdatedNodes = [...rootUpdatedNodes, ...allUpdatedNodes];
+    allUpdatedEdges = [...rootUpdatedEdges, ...allUpdatedEdges];
 
+    console.log("allUpdatedEdges", allUpdatedEdges);
     return {
         updatedNodes: allUpdatedNodes,
-        updatedEdges: edges, // Always return original edges unchanged
+        updatedEdges: allUpdatedEdges,
     };
 }

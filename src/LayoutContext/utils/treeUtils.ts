@@ -195,17 +195,29 @@ export function findLCAWithChildren(
   nodeIdWithNode: Map<string, Node>,
   noParentKey: string = 'no-parent'
 ): { lca: string | null, sourceChild: string | null, targetChild: string | null } {
+  // Special case: if both node IDs are the same, return the parent as LCA (or noParentKey if no parent)
+  if (sourceNodeId === targetNodeId) {
+    const node = nodeIdWithNode.get(sourceNodeId);
+    const parentId = node?.parentId ?? noParentKey;
+    console.log(`LCA of ${sourceNodeId} and ${targetNodeId} is ${parentId}`);
+    return {
+      lca: parentId,
+      sourceChild: sourceNodeId,
+      targetChild: targetNodeId
+    };
+  }
+
   // Get all ancestors for both nodes (including themselves)
   const sourceAncestors = getAncestorPath(sourceNodeId, nodeIdWithNode, noParentKey);
   const targetAncestors = getAncestorPath(targetNodeId, nodeIdWithNode, noParentKey);
-  
+
   // Convert target ancestors to Set for O(1) lookup
   const targetAncestorSet = new Set(targetAncestors);
-  
+
   // Find the first common ancestor from source's perspective
   let lca: string | null = null;
   let sourceChildIndex = -1;
-  
+
   for (let i = 0; i < sourceAncestors.length; i++) {
     if (targetAncestorSet.has(sourceAncestors[i])) {
       lca = sourceAncestors[i];
@@ -213,17 +225,18 @@ export function findLCAWithChildren(
       break;
     }
   }
-  
+
   if (!lca) {
     return { lca: null, sourceChild: null, targetChild: null };
   }
-  
+
   // Find the index of LCA in target ancestors
   const targetChildIndex = targetAncestors.indexOf(lca);
-  
+
   // Extract children: the node before the LCA in the path (or the node itself if it's a direct child)
   const sourceChild = sourceChildIndex > 0 ? sourceAncestors[sourceChildIndex - 1] : sourceNodeId;
   const targetChild = targetChildIndex > 0 ? targetAncestors[targetChildIndex - 1] : targetNodeId;
-  
+
+  console.log(`LCA of ${sourceNodeId} and ${targetNodeId} is ${lca}`);
   return { lca, sourceChild, targetChild };
 }

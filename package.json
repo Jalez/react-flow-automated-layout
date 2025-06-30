@@ -43,7 +43,10 @@
     "prepublishOnly": "npm run build-lib && npm run generate-types"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.4"
+    "@dagrejs/dagre": "^1.1.4",
+    "@jalez/react-flow-smart-edge": "file:../react-flow-smart-edge",
+    "elkjs": "^0.10.0",
+    "pathfinding": "^0.4.18"
   },
   "peerDependencies": {
     "@xyflow/react": "^12.0.0",
@@ -53,10 +56,11 @@
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@types/node": "^22.14.0",
+    "@types/pathfinding": "^0.1.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react-swc": "^3.8.0",
-    "@xyflow/react": "^12.4.4",
+    "@xyflow/react": "^12.7.1",
     "dotenv": "^16.4.7",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",

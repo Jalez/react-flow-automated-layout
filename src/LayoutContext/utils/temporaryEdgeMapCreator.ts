@@ -21,7 +21,7 @@ export function createGlobalTemporaryEdgesMap(
       noParentKey
     );
     
-    if (lca && sourceChild && targetChild && sourceChild !== targetChild) {
+    if (lca && sourceChild && targetChild) {
       // Only create temporary edge if source and target are different
       // (avoids self-loops in temporary edges)
       

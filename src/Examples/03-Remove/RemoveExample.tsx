@@ -19,11 +19,20 @@ import {
   LayoutProvider,
   LayoutControls,
 } from '../../LayoutContext';
+import SmartBezierEdge, { SmartStepEdge, SmartStraightEdge } from '@jalez/react-flow-smart-edge';
+import { SmartOrthogonalEdge } from '../../LayoutContext/components/SmartOrthogonalEdge';
 
 // Define the node data type to satisfy Record<string, unknown>
 interface NodeData extends Record<string, unknown> {
   label?: string;
 }
+
+// Configure edge types for smart pathfinding
+const edgeTypes = {
+  smart: SmartOrthogonalEdge as any,
+};
+
+
 
 const initialNodes: Node<NodeData>[] = [
   {
@@ -49,10 +58,10 @@ const initialNodes: Node<NodeData>[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: '1->3', source: '1', target: '3' },
-  { id: '2->3', source: '2', target: '3' },
-  { id: '3->4', source: '3', target: '4' },
-  { id: '4->5', source: '4', target: '5' },
+  { id: '1->3', source: '1', target: '3', type: 'smart', animated: true },
+  { id: '2->3', source: '2', target: '3', type: 'smart', animated: true },
+  { id: '3->4', source: '3', target: '4', type: 'smart', animated: true },
+  { id: '4->5', source: '4', target: '5', type: 'smart', animated: true },
 ];
 
 export default function RemoveFlow() {
@@ -60,8 +69,12 @@ export default function RemoveFlow() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [],
+    (params: Connection) => setEdges((eds) => addEdge({
+      ...params,
+      type: 'smart',
+      animated: true,
+    }, eds)),
+    [setEdges],
   );
 
 
@@ -82,6 +95,8 @@ export default function RemoveFlow() {
               id: `${source}->${target}`,
               source,
               target,
+              type: 'smart',
+              animated: true,
             })),
           );
 
@@ -103,6 +118,7 @@ export default function RemoveFlow() {
             onNodesDelete={onNodesDelete}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            edgeTypes={edgeTypes}
             fitView
           >
             <Background />

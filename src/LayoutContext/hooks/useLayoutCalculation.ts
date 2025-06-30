@@ -54,7 +54,7 @@ export const processSelectedNodes = async (
   );
   if (filteredParentIds.length === 0) {
     return { nodes, edges };
-  }
+  }  
   // Map to track updated nodes and edges (using node/edge ID as key for faster lookups)
   const updatedNodesMap = new Map<string, Node>();
   const updatedEdgesMap = new Map<string, Edge>();
@@ -217,6 +217,8 @@ export const useLayoutCalculation = (
       updatedEdges = result.updatedEdges;
     }
 
+    console.log("Updated edges after layout calculation:", updatedEdges );
+
     // Merge the updated nodes with the original nodes that were filtered out (hidden nodes)
     const finalNodes = nodes.map(node => {
       if (!layoutHidden && node.hidden) {
@@ -225,10 +227,16 @@ export const useLayoutCalculation = (
       const updatedNode = updatedNodes.find(n => n.id === node.id);
       return updatedNode || node;
     });
+    const finalEdges = edges.map(edge => {
+      const updatedEdge = updatedEdges.find(e => e.source === edge.source && e.target === edge.target);
+      return updatedEdge || edge;
+    });
+
+    console.log("Final edges after layout calculation:", finalEdges);
 
     return {
       nodes: finalNodes,
-      edges: updatedEdges
+      edges: finalEdges
     };
   }, [
     algorithm, 

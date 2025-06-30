@@ -73,8 +73,10 @@ export function useLayoutOperations({
                 }
 
                 if (updateEdges) {
+                    console.log("Updating edges with result:", result.edges);
                     updateEdges(result.edges);
                 } else if (reactFlowInstance?.setEdges) {
+                    console.log("Setting edges in React Flow instance:", result.edges);
                     reactFlowInstance.setEdges(result.edges);
                 }
 

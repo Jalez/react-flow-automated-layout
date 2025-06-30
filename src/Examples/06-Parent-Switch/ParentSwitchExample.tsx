@@ -12,6 +12,7 @@ import {
     Panel,
     NodeTypes,
     NodeChange,
+    EdgeChange,
     applyNodeChanges,
 } from '@xyflow/react';
 
@@ -20,9 +21,16 @@ import '@xyflow/react/dist/style.css';
 import { initialNodes, initialEdges, parentContainers } from './initialElements';
 import { LayoutProvider, LayoutControls } from '../../LayoutContext';
 import SwitchableNode, { SwitchableNodeData } from './components/SwitchableNode';
+import { SmartStepEdgeExt } from './components/SmartEdgeButton';
+import SmartBezierEdge, { SmartStepEdge, SmartStraightEdge } from '@jalez/react-flow-smart-edge';
+// import CustomSmartEdge from './components/CustomSmartEdge'; // Uncomment for custom settings
 
 const nodeTypes: NodeTypes = {
     switchable: SwitchableNode,
+};
+
+const edgeTypes = {
+    smart: SmartStepEdgeExt as any,
 };
 
 // Helper to create initial nodes with proper structure
@@ -60,7 +68,12 @@ const ParentSwitchExample = () => {
     const onNodesChange = useCallback((changes: NodeChange[]) => {
         const nextNodes = applyNodeChanges(changes, nodes) as Node<SwitchableNodeData>[];
         setNodes(nextNodes);
-    }, [nodes]);
+    }, [nodes, setNodes]);
+
+    const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+        console.log('Edge changes:', changes);
+        onEdgesChange(changes);
+    }, [onEdgesChange]);
 
 
     // Handle edge connections
@@ -69,7 +82,7 @@ const ParentSwitchExample = () => {
             const edge: Edge = {
                 ...params,
                 id: `e${params.source}-${params.target}`,
-                type: ConnectionLineType.SmoothStep,
+                type: 'smart', // Use smart edge type for pathfinding
                 animated: true,
             };
             setEdges((eds) => addEdge(edge, eds));
@@ -86,9 +99,10 @@ const ParentSwitchExample = () => {
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
+                onEdgesChange={handleEdgesChange}
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 fitView
             >
