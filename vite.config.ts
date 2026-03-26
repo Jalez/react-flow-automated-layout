@@ -19,9 +19,18 @@ export default defineConfig({
       fileName: (format) => `react-flow-automated-layout.${format}.js`,
     },
     rollupOptions: {
-      external: ['react', 'react-dom', '@xyflow/react', '@dagrejs/dagre'],
+      external: (id) =>
+        id === 'react' ||
+        id.startsWith('react/') ||
+        id === 'react-dom' ||
+        id.startsWith('react-dom/') ||
+        id === '@xyflow/react' ||
+        id.startsWith('@xyflow/react/') ||
+        id === '@dagrejs/dagre',
       output: {
         globals: {
+          'react/jsx-runtime': 'jsxRuntime',
+          'react/jsx-dev-runtime': 'jsxDevRuntime',
           react: 'React',
           'react-dom': 'ReactDOM',
           '@xyflow/react': 'ReactFlow',
