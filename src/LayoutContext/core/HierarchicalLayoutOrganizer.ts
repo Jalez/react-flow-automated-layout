@@ -2,12 +2,330 @@ import { Edge, Node } from "@xyflow/react";
 import { calculateLayoutWithDagre } from "./Dagre";
 import { TreeNode } from "../utils/treeUtils";
 import { createGlobalTemporaryEdgesMap } from "../utils/temporaryEdgeMapCreator";
+import { findLCAWithChildren, getFirstChildUnderAncestor } from "../utils/treeUtils";
 
 export type Direction = 'TB' | 'LR' | 'RL' | 'BT';
 
 
 
 const MARGIN = 10;
+
+type BridgeAlignmentHint = {
+    anchorContainerId: string;
+    bridgeContainerId: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+};
+
+const getNodeById = (nodes: Node[], nodeId: string): Node | undefined =>
+    nodes.find(node => node.id === nodeId);
+
+const getRelativeNodeCenter = (
+    nodeId: string,
+    ancestorId: string,
+    nodeIdWithNode: Map<string, Node>
+): { x: number; y: number } | null => {
+    const node = nodeIdWithNode.get(nodeId);
+    if (!node) {
+        return null;
+    }
+
+    let x = node.position.x + (node.width || Number(node.style?.width) || 172) / 2;
+    let y = node.position.y + (node.height || Number(node.style?.height) || 36) / 2;
+    let currentParentId = node.parentId;
+
+    while (currentParentId && currentParentId !== ancestorId) {
+        const parentNode = nodeIdWithNode.get(currentParentId);
+        if (!parentNode) {
+            break;
+        }
+
+        x += parentNode.position.x;
+        y += parentNode.position.y;
+        currentParentId = parentNode.parentId;
+    }
+
+    return { x, y };
+};
+
+const getNodeDimensions = (node: Node) => ({
+    width: node.width || Number(node.style?.width) || 172,
+    height: node.height || Number(node.style?.height) || 36,
+});
+
+const getNodeCenter = (node: Node) => {
+    const { width, height } = getNodeDimensions(node);
+    return {
+        x: node.position.x + width / 2,
+        y: node.position.y + height / 2,
+    };
+};
+
+const normalizeLayoutedNodes = (
+    nodes: Node[],
+    margin: number
+): { nodes: Node[]; width: number; height: number } => {
+    if (nodes.length === 0) {
+        return { nodes, width: 0, height: 0 };
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    nodes.forEach(node => {
+        const { width, height } = getNodeDimensions(node);
+        minX = Math.min(minX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxX = Math.max(maxX, node.position.x + width);
+        maxY = Math.max(maxY, node.position.y + height);
+    });
+
+    const offsetX = margin - minX;
+    const offsetY = margin - minY;
+
+    nodes.forEach(node => {
+        node.position = {
+            x: node.position.x + offsetX,
+            y: node.position.y + offsetY,
+        };
+    });
+
+    const width = maxX - minX + margin * 2;
+    const height = maxY - minY + margin * 2;
+
+    return { nodes, width, height };
+};
+
+const resolveSiblingCollisions = (
+    nodes: Node[],
+    direction: Direction,
+    nodeSpacing: number,
+    movedNodeIds: Set<string>
+) => {
+    if (nodes.length < 2 || movedNodeIds.size === 0) {
+        return;
+    }
+
+    if (direction === 'TB' || direction === 'BT') {
+        const sortedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x);
+        sortedNodes.forEach((node, index) => {
+            if (!movedNodeIds.has(node.id)) {
+                return;
+            }
+
+            let rightEdge = node.position.x + getNodeDimensions(node).width;
+
+            for (let i = index + 1; i < sortedNodes.length; i++) {
+                const sibling = sortedNodes[i];
+                const { width } = getNodeDimensions(sibling);
+                const minX = rightEdge + nodeSpacing;
+
+                if (sibling.position.x < minX) {
+                    sibling.position.x = minX;
+                }
+
+                rightEdge = sibling.position.x + width;
+            }
+        });
+    } else {
+        const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
+        sortedNodes.forEach((node, index) => {
+            if (!movedNodeIds.has(node.id)) {
+                return;
+            }
+
+            let bottomEdge = node.position.y + getNodeDimensions(node).height;
+
+            for (let i = index + 1; i < sortedNodes.length; i++) {
+                const sibling = sortedNodes[i];
+                const { height } = getNodeDimensions(sibling);
+                const minY = bottomEdge + nodeSpacing;
+
+                if (sibling.position.y < minY) {
+                    sibling.position.y = minY;
+                }
+
+                bottomEdge = sibling.position.y + height;
+            }
+        });
+    }
+};
+
+const findBridgeAlignmentHints = (
+    parentNodeId: string,
+    originalEdges: Edge[],
+    nodeIdWithNode: Map<string, Node>,
+    noParentKey: string
+): BridgeAlignmentHint[] => {
+    const incomingByPivot = new Map<string, Edge[]>();
+    const outgoingByPivot = new Map<string, Edge[]>();
+
+    originalEdges.forEach(edge => {
+        const incoming = incomingByPivot.get(edge.target) || [];
+        incoming.push(edge);
+        incomingByPivot.set(edge.target, incoming);
+
+        const outgoing = outgoingByPivot.get(edge.source) || [];
+        outgoing.push(edge);
+        outgoingByPivot.set(edge.source, outgoing);
+    });
+
+    const hints = new Map<string, BridgeAlignmentHint>();
+
+    outgoingByPivot.forEach((outgoingEdges, pivotNodeId) => {
+        const incomingEdges = incomingByPivot.get(pivotNodeId) || [];
+        if (incomingEdges.length === 0) {
+            return;
+        }
+
+        incomingEdges.forEach(incomingEdge => {
+            outgoingEdges.forEach(outgoingEdge => {
+                if (incomingEdge.source === outgoingEdge.target) {
+                    return;
+                }
+
+                const incomingLca = findLCAWithChildren(
+                    incomingEdge.source,
+                    pivotNodeId,
+                    nodeIdWithNode,
+                    noParentKey
+                ).lca;
+                const outgoingLca = findLCAWithChildren(
+                    pivotNodeId,
+                    outgoingEdge.target,
+                    nodeIdWithNode,
+                    noParentKey
+                ).lca;
+
+                if (incomingLca !== parentNodeId || outgoingLca !== parentNodeId) {
+                    return;
+                }
+
+                const anchorContainerId = getFirstChildUnderAncestor(
+                    incomingEdge.source,
+                    parentNodeId,
+                    nodeIdWithNode,
+                    noParentKey
+                );
+                const targetContainerAtLevel = getFirstChildUnderAncestor(
+                    outgoingEdge.target,
+                    parentNodeId,
+                    nodeIdWithNode,
+                    noParentKey
+                );
+                const bridgeContainerAtLevel = getFirstChildUnderAncestor(
+                    pivotNodeId,
+                    parentNodeId,
+                    nodeIdWithNode,
+                    noParentKey
+                );
+
+                if (!anchorContainerId || !targetContainerAtLevel || !bridgeContainerAtLevel) {
+                    return;
+                }
+
+                if (anchorContainerId !== targetContainerAtLevel || anchorContainerId === bridgeContainerAtLevel) {
+                    return;
+                }
+
+                const sourceProjectedId = getFirstChildUnderAncestor(
+                    incomingEdge.source,
+                    anchorContainerId,
+                    nodeIdWithNode,
+                    noParentKey
+                );
+                const targetProjectedId = getFirstChildUnderAncestor(
+                    outgoingEdge.target,
+                    anchorContainerId,
+                    nodeIdWithNode,
+                    noParentKey
+                );
+
+                if (!sourceProjectedId || !targetProjectedId || sourceProjectedId === targetProjectedId) {
+                    return;
+                }
+
+                const key = `${anchorContainerId}:${bridgeContainerAtLevel}:${sourceProjectedId}:${targetProjectedId}`;
+                hints.set(key, {
+                    anchorContainerId,
+                    bridgeContainerId: bridgeContainerAtLevel,
+                    sourceNodeId: sourceProjectedId,
+                    targetNodeId: targetProjectedId,
+                });
+            });
+        });
+    });
+
+    return [...hints.values()];
+};
+
+const applyBridgeAlignmentHints = (
+    layoutedNodes: Node[],
+    parentNodeId: string,
+    direction: Direction,
+    nodeSpacing: number,
+    originalEdges: Edge[],
+    nodeIdWithNode: Map<string, Node>,
+    noParentKey: string
+): Set<string> => {
+    const hints = findBridgeAlignmentHints(parentNodeId, originalEdges, nodeIdWithNode, noParentKey);
+    const movedNodeIds = new Set<string>();
+
+    hints.forEach(hint => {
+        const anchorContainer = getNodeById(layoutedNodes, hint.anchorContainerId);
+        const bridgeContainer = getNodeById(layoutedNodes, hint.bridgeContainerId);
+
+        if (!anchorContainer || !bridgeContainer) {
+            return;
+        }
+
+        const sourceCenter = getRelativeNodeCenter(hint.sourceNodeId, parentNodeId, nodeIdWithNode);
+        const targetCenter = getRelativeNodeCenter(hint.targetNodeId, parentNodeId, nodeIdWithNode);
+
+        if (!sourceCenter || !targetCenter) {
+            return;
+        }
+
+        const { width: bridgeWidth, height: bridgeHeight } = getNodeDimensions(bridgeContainer);
+        const { width: anchorWidth, height: anchorHeight } = getNodeDimensions(anchorContainer);
+        const originalAnchorCenter = getNodeCenter(anchorContainer);
+        const originalBridgeCenter = getNodeCenter(bridgeContainer);
+
+        if (direction === 'TB' || direction === 'BT') {
+            const midpointY = (sourceCenter.y + targetCenter.y) / 2;
+            bridgeContainer.position.y = midpointY - bridgeHeight / 2;
+
+            const bridgeIsOnRight = originalBridgeCenter.x >= originalAnchorCenter.x;
+            const currentHorizontalGap = bridgeIsOnRight
+                ? bridgeContainer.position.x - (anchorContainer.position.x + anchorWidth)
+                : anchorContainer.position.x - (bridgeContainer.position.x + bridgeWidth);
+            const enforcedGap = Math.max(nodeSpacing, currentHorizontalGap);
+
+            bridgeContainer.position.x = bridgeIsOnRight
+                ? anchorContainer.position.x + anchorWidth + enforcedGap
+                : anchorContainer.position.x - bridgeWidth - enforcedGap;
+        } else {
+            const midpointX = (sourceCenter.x + targetCenter.x) / 2;
+            bridgeContainer.position.x = midpointX - bridgeWidth / 2;
+
+            const bridgeIsBelow = originalBridgeCenter.y >= originalAnchorCenter.y;
+            const currentVerticalGap = bridgeIsBelow
+                ? bridgeContainer.position.y - (anchorContainer.position.y + anchorHeight)
+                : anchorContainer.position.y - (bridgeContainer.position.y + bridgeHeight);
+            const enforcedGap = Math.max(nodeSpacing, currentVerticalGap);
+
+            bridgeContainer.position.y = bridgeIsBelow
+                ? anchorContainer.position.y + anchorHeight + enforcedGap
+                : anchorContainer.position.y - bridgeHeight - enforcedGap;
+        }
+
+        movedNodeIds.add(bridgeContainer.id);
+    });
+
+    return movedNodeIds;
+};
 
 /**
  * @function organizeLayoutRecursively
@@ -61,7 +379,8 @@ export const organizeLayoutRecursively = async (
             defaultNodeHeight,
             LayoutAlgorithm,
             includeHidden,
-            temporaryEdgesByParent
+            temporaryEdgesByParent,
+            noParentKey
         );
 
     const parentNode = nodeIdWithNode.get(parentNodeId);
@@ -126,6 +445,8 @@ export const layoutSingleContainer = async (
     LayoutAlgorithm = calculateLayoutWithDagre,
     includeHidden: boolean = false,
     temporaryEdgesByParent: Map<string, Edge[]> = new Map() // Global temporary edges map
+    ,
+    noParentKey: string = 'no-parent'
 ): Promise<{ updatedNodes: Node[], udpatedParentNode?: Node }> => {
     // Get the set of child IDs for this parent
     const childIdSet = nodeParentIdMapWithChildIdSet.get(parentNodeId);
@@ -159,7 +480,7 @@ export const layoutSingleContainer = async (
     // Simply get temporary edges for this level - no edge processing needed!
     const temporaryEdgesForLevel = temporaryEdgesByParent.get(parentNodeId) || [];
 
-    const { nodes: layoutedNodes, edges: _, width, height } =
+    const { nodes: layoutedNodes, edges: _ } =
         await LayoutAlgorithm(
             nodesToLayout,
             temporaryEdgesForLevel, // Only use temporary edges for layout
@@ -172,12 +493,43 @@ export const layoutSingleContainer = async (
             includeHidden
         );
 
-    if (parentNode && width && height) {
-        fixParentNodeDimensions(parentNode, width, height);
+    layoutedNodes.forEach(node => {
+        nodeIdWithNode.set(node.id, node);
+    });
+
+    const movedNodeIds = applyBridgeAlignmentHints(
+        layoutedNodes,
+        parentNodeId,
+        direction,
+        nodeSpacing,
+        _originalEdges,
+        nodeIdWithNode,
+        noParentKey
+    );
+
+    resolveSiblingCollisions(
+        layoutedNodes,
+        direction,
+        nodeSpacing,
+        movedNodeIds
+    );
+
+    layoutedNodes.forEach(node => {
+        nodeIdWithNode.set(node.id, node);
+    });
+
+    const normalizedLayout = normalizeLayoutedNodes(layoutedNodes, margin);
+
+    normalizedLayout.nodes.forEach(node => {
+        nodeIdWithNode.set(node.id, node);
+    });
+
+    if (parentNode && normalizedLayout.width && normalizedLayout.height) {
+        fixParentNodeDimensions(parentNode, normalizedLayout.width, normalizedLayout.height);
     }
 
     return {
-        updatedNodes: [...layoutedNodes],
+        updatedNodes: [...normalizedLayout.nodes],
         udpatedParentNode: parentNode || undefined,
     };
 }
@@ -285,7 +637,8 @@ export const organizeLayoutByTreeDepth = async (
                 defaultNodeHeight,
                 LayoutAlgorithm,
                 includeHidden,
-                temporaryEdgesByParent // Pass the global temporary edges map
+                temporaryEdgesByParent, // Pass the global temporary edges map
+                noParentKey
             )
         ));
 
@@ -310,7 +663,8 @@ export const organizeLayoutByTreeDepth = async (
             defaultNodeHeight,
             LayoutAlgorithm,
             includeHidden,
-            temporaryEdgesByParent // Process root-level temporary edges
+            temporaryEdgesByParent, // Process root-level temporary edges
+            noParentKey
         );
 
     // Final merge

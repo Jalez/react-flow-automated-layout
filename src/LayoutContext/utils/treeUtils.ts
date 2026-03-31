@@ -185,6 +185,35 @@ export function getAncestorPath(
   return path;
 }
 
+/**
+ * Returns the first child under the given ancestor on the path to the node.
+ * If the node itself is the direct child under the ancestor, returns the node id.
+ * Returns null if the ancestor is not on the node's ancestor path.
+ */
+export function getFirstChildUnderAncestor(
+  nodeId: string,
+  ancestorId: string,
+  nodeIdWithNode: Map<string, Node>,
+  noParentKey: string = 'no-parent'
+): string | null {
+  if (nodeId === ancestorId) {
+    return nodeId;
+  }
+
+  const path = getAncestorPath(nodeId, nodeIdWithNode, noParentKey);
+  const ancestorIndex = path.indexOf(ancestorId);
+
+  if (ancestorIndex === -1) {
+    return null;
+  }
+
+  if (ancestorIndex === 0) {
+    return nodeId;
+  }
+
+  return path[ancestorIndex - 1] || null;
+}
+
 
 /**
  * Enhanced LCA function that returns both the LCA and the immediate children

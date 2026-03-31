@@ -56,11 +56,20 @@ export const calculateLayoutWithDagre = async (
   edges.forEach(edge => {
     const sourceHandle = edge.sourceHandle;
     const targetHandle = edge.targetHandle;
+    const isReciprocal = Boolean(edge.data?.isReciprocal);
+    const isSyntheticBridge = Boolean(edge.data?.isSyntheticBridge);
   
     let edgeOptions = {};
+
+    if (isReciprocal) {
+      edgeOptions = { constraint: false, minlen: 1, weight: 5 };
+    }
+    else if (isSyntheticBridge) {
+      edgeOptions = { constraint: true, minlen: 1, weight: 4 };
+    }
   
     // Case 1: Sibling (purely right -> left) - Should NOT affect rank
-    if (sourceHandle === 'right' && targetHandle === 'left') {
+    else if (sourceHandle === 'right' && targetHandle === 'left') {
       edgeOptions = { constraint: false, minlen: 1 };
     }
     // Case 2: Parent-Child (purely bottom -> top) - Should affect rank and force separation

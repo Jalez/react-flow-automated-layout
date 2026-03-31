@@ -9,6 +9,7 @@ import RemoveFlowLayout from "./03-Remove/RemoveExample";
 import SelectFlowLayout from "./04-Select/SelectExample";
 import CustomControlsExample from "./05-Custom-Controls/CustomControlsExample";
 import ParentSwitchExample from "./06-Parent-Switch/ParentSwitchExample";
+import CyclicContainersExample from "./07-Cyclic-Containers/CyclicContainersExample";
 
 // Example type definition
 type Example = {
@@ -55,6 +56,12 @@ const examples: Example[] = [
     name: "06 - Parent Switch",
     description: "Demonstrates dynamic parent-child relationships where nodes can switch between different parent containers while maintaining connections and auto-layout.",
     component: ParentSwitchExample,
+  },
+  {
+    id: "07-cyclic-containers",
+    name: "07 - Cyclic Containers",
+    description: "Reproduces a reciprocal cross-container dependency where A1 -> B1 and B1 -> A2 collapse into A -> B and B -> A at the shared parent level.",
+    component: CyclicContainersExample,
   },
 ];
 
@@ -150,9 +157,9 @@ function App() {
 
       {/* Example component area */}
       <div style={styles.exampleContainer}>
-        <ReactFlowProvider>
+        <ReactFlowProvider key={selectedExampleId}>
           <div style={styles.reactflowWrapper}>
-            <ExampleComponent />
+            <ExampleComponent key={selectedExampleId} />
           </div>
         </ReactFlowProvider>
       </div>

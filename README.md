@@ -90,6 +90,16 @@ The LayoutProvider component props have changed accordingly:
 
 ## Patch Updates
 
+### 1.2.6 (2026-03-31)
+
+- **Reciprocal Bridge Layouts**: Added handling for reciprocal cross-container bridge patterns so `A -> B -> A` style relationships no longer collapse into arbitrary directional ordering
+- **Synthetic Bridge Edges**: Introduced temporary intra-container bridge edges to preserve indirect ordering between sibling branches such as `A1 -> B1 -> A2`
+- **Nested Ancestor Projection**: Generalized bridge detection to work across deeper descendant paths by projecting edge endpoints to the first child under the current layout ancestor
+- **Bridge Alignment Pass**: Added a post-layout alignment pass that centers bridged sibling containers against the midpoint of the connected branches
+- **Sibling Collision Resolution**: Added a follow-up collision pass so sibling containers are pushed clear after bridge alignment instead of overlapping
+- **Bounds Recalculation**: Parent container dimensions are now recomputed from final post-alignment child positions to reserve space correctly at higher levels
+- **Example Coverage**: Added a new `07 - Cyclic Containers` example and regression tests covering both direct and nested reciprocal bridge scenarios
+
 ### 1.2.3 (2025-05-26)
 
 - **Enhanced Edge Handling**: Completely redesigned edge processing system for better reliability with complex nested structures
